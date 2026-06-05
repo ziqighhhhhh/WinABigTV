@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
+import { useTranslation } from 'react-i18next'
 import { trpc } from '@/providers/trpc'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { QrCode, ArrowRight, AlertTriangle } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function Home() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const urlCode = searchParams.get('code') || ''
@@ -21,16 +24,16 @@ export default function Home() {
     onSuccess: (data) => {
       setAutoChecking(false)
       if (data.valid) {
-        navigate(`/register?code=${data.code}`)
+        navigate(`/survey?code=${data.code}`)
       } else if (data.reason === 'used') {
-        toast.error('该编码已被使用，无法再次进入')
+        toast.error(t('home.error.used'))
       } else {
-        toast.error('编码不存在，请检查后重新输入')
+        toast.error(t('home.error.notFound'))
       }
     },
     onError: () => {
       setAutoChecking(false)
-      toast.error('验证失败，请重试')
+      toast.error(t('home.error.verifyFailed'))
     },
   })
 
@@ -43,7 +46,7 @@ export default function Home() {
 
   const handleSubmit = () => {
     if (!code.trim()) {
-      toast.error('请输入编码')
+      toast.error(t('home.error.empty'))
       return
     }
     verifyMutation.mutate({ code: code.trim().toUpperCase() })
@@ -56,52 +59,57 @@ export default function Home() {
   // URL中有code参数时，显示加载状态
   if (autoChecking) {
     return (
-      <div className="min-h-screen bg-[#f7f7f5] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50 flex items-center justify-center">
         <Spinner className="size-8" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7f5] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50 flex items-center justify-center p-4">
       <Toaster position="top-right" />
       <Card className="max-w-sm w-full border border-[#e5e7eb] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <CardContent className="pt-8 pb-8 px-6">
+          {/* 语言切换 */}
+          <div className="flex justify-end mb-4">
+            <LanguageSwitcher />
+          </div>
+
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 rounded-xl bg-[#eff6ff] flex items-center justify-center mb-4">
-              <QrCode size={28} className="text-[#2563eb]" />
+            <div className="mx-auto w-16 h-16 rounded-xl bg-green-100 flex items-center justify-center mb-4">
+              <QrCode size={28} className="text-green-600" />
             </div>
             <h1 className="text-2xl font-semibold text-[#111827] mb-2">
-              编码登记系统
+              {t('home.title')}
             </h1>
             <p className="text-sm text-[#6b7280]">
-              请输入您的编码进入登记页面
+              {t('home.subtitle')}
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#111827]">编码</Label>
+              <Label className="text-sm font-medium text-[#111827]">{t('home.codeLabel')}</Label>
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 onKeyDown={handleKeyDown}
-                placeholder="请输入6位编码"
+                placeholder={t('home.codePlaceholder')}
                 maxLength={6}
-                className="h-12 text-center text-lg tracking-[0.3em] font-mono border-[#e5e7eb] rounded-md uppercase focus:ring-2 focus:ring-blue-100 focus:border-[#2563eb]"
+                className="h-12 text-center text-lg tracking-[0.3em] font-mono border-[#e5e7eb] rounded-md uppercase focus:ring-2 focus:ring-green-100 focus:border-green-500"
               />
             </div>
 
             <Button
               onClick={handleSubmit}
               disabled={verifyMutation.isPending}
-              className="w-full h-12 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg text-sm font-medium"
+              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
             >
               {verifyMutation.isPending ? (
-                '验证中...'
+                t('home.autoChecking')
               ) : (
                 <>
-                  进入登记页面
+                  {t('home.submit')}
                   <ArrowRight size={14} className="ml-2" />
                 </>
               )}
@@ -111,7 +119,7 @@ export default function Home() {
           <div className="mt-6 flex items-start gap-2 px-3 py-2.5 bg-[#f9fafb] rounded-md">
             <AlertTriangle size={14} className="text-[#9ca3af] mt-0.5 flex-shrink-0" />
             <p className="text-xs text-[#9ca3af] leading-relaxed">
-              每个编码只能使用一次，提交后编码将自动失效。扫码可自动填入编码。
+              {t('home.note')}
             </p>
           </div>
 
@@ -120,7 +128,7 @@ export default function Home() {
               href="/admin"
               className="text-xs text-[#9ca3af] hover:text-[#2563eb] transition-colors"
             >
-              管理后台入口
+              {t('home.adminLink')}
             </a>
           </div>
         </CardContent>
