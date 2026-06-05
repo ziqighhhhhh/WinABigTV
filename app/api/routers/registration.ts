@@ -55,16 +55,17 @@ export const registrationRouter = createRouter({
       };
     }),
 
-  // 提交名字记录（编码使用后立即标记为filled，不可再次进入）
+  // 提交预测记录（编码使用后立即标记为filled，不可再次进入）
   submit: publicQuery
     .input(
       z.object({
         code: z.string(),
-        names: z.tuple([
-          z.string().min(1).max(100),
-          z.string().min(1).max(100),
-          z.string().min(1).max(100),
-          z.string().min(1).max(100),
+        surveyAnswers: z.array(z.string()),
+        teams: z.tuple([
+          z.string(),
+          z.string(),
+          z.string(),
+          z.string(),
         ]),
       })
     )
@@ -77,22 +78,23 @@ export const registrationRouter = createRouter({
         .where(eq(qrCodes.code, input.code.toUpperCase()));
 
       if (qrList.length === 0) {
-        throw new Error("编码不存在");
+        throw new Error("Code not found");
       }
 
       const qr = qrList[0];
 
       if (qr.status === "filled") {
-        throw new Error("该编码已被使用");
+        throw new Error("Code already used");
       }
 
-      // 创建名字记录
+      // 创建预测记录
       await db.insert(nameRecords).values({
         qrCodeId: qr.id,
-        name1: input.names[0],
-        name2: input.names[1],
-        name3: input.names[2],
-        name4: input.names[3],
+        surveyAnswers: JSON.stringify(input.surveyAnswers),
+        team1: input.teams[0],
+        team2: input.teams[1],
+        team3: input.teams[2],
+        team4: input.teams[3],
       });
 
       // 标记编码为已使用
