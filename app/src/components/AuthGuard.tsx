@@ -6,14 +6,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const location = useLocation()
 
   useEffect(() => {
-    const isAuth = sessionStorage.getItem('admin_auth') === 'true'
-    if (!isAuth) {
+    const token = localStorage.getItem('admin_token')
+    if (!token) {
       navigate('/admin', { replace: true })
     }
   }, [navigate, location.pathname])
 
-  const isAuth = sessionStorage.getItem('admin_auth') === 'true'
-  if (!isAuth) return null
+  const token = localStorage.getItem('admin_token')
+  if (!token) return null
 
   return <>{children}</>
 }
