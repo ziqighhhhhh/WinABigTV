@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { createRouter, publicQuery } from "../middleware";
+import { createRouter, publicQuery, authenticatedQuery } from "../middleware";
 import { getDb } from "../queries/connection";
-import { qrCodes, categories, nameRecords } from "@db/schema";
+import { qrCodes, categories, nameRecords, customers } from "@db/schema";
 import { eq, desc, like, and, count } from "drizzle-orm";
 
 function generateUUID() {
@@ -18,11 +18,12 @@ function generateCode() {
 }
 
 export const qrCodeRouter = createRouter({
-  generate: publicQuery
+  generate: authenticatedQuery
     .input(
       z.object({
         count: z.number().min(1).max(1000),
         category: z.string().optional(),
+        customerId: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -48,6 +49,7 @@ export const qrCodeRouter = createRouter({
           uuid,
           url,
           category,
+          customerId: input.customerId || null,
         });
         generated.push({
           id: Number(result[0].insertId),
@@ -108,7 +110,7 @@ export const qrCodeRouter = createRouter({
       return { items, total };
     }),
 
-  delete: publicQuery
+  delete: authenticatedQuery
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -157,7 +159,7 @@ export const qrCodeRouter = createRouter({
       };
     }),
 
-  createCategory: publicQuery
+  createCategory: authenticatedQuery
     .input(z.object({ name: z.string().min(1).max(100) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -167,5 +169,66 @@ export const qrCodeRouter = createRouter({
       } catch {
         return { success: false, error: "分类已存在" };
       }
+    }),
+
+  // 客户管理
+  customers: publicQuery.query(async () => {
+    const db = getDb();
+    return db.select().from(customers).orderBy(desc(customers.createdAt));
+  }),
+
+  createCustomer: authenticatedQuery
+    .input(z.object({
+      name: z.string().min(1),
+      country: z.string().optional(),
+      contact: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const result = await db.insert(customers).values(input);
+      return { id: Number(result[0].insertId) };
+    }),
+
+  // 中奖筛选
+  winners: authenticatedQuery
+    .input(
+      z.object({
+        team1: z.string(),
+        team2: z.string(),
+        team3: z.string(),
+        team4: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = getDb();
+      const actualTeams = [input.team1, input.team2, input.team3, input.team4].sort();
+
+      const allRecords = await db
+        .select({
+          record: nameRecords,
+          code: qrCodes.code,
+          customerName: customers.name,
+        })
+        .from(nameRecords)
+        .innerJoin(qrCodes, eq(nameRecords.qrCodeId, qrCodes.id))
+        .leftJoin(customers, eq(qrCodes.customerId, customers.id));
+
+      const winners = allRecords.filter(({ record }) => {
+        const userTeams = [
+          record.team1,
+          record.team2,
+          record.team3,
+          record.team4,
+        ].filter(Boolean).sort();
+
+        return userTeams.join(',') === actualTeams.join(',');
+      });
+
+      return winners.map(w => ({
+        code: w.code,
+        customerName: w.customerName,
+        teams: [w.record.team1, w.record.team2, w.record.team3, w.record.team4],
+        surveyAnswers: w.record.surveyAnswers,
+      }));
     }),
 });
