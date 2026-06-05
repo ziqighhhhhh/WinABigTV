@@ -34,13 +34,13 @@ export const qrCodeRouter = createRouter({
       for (let i = 0; i < input.count; i++) {
         let code = generateCode();
         let uuid = generateUUID();
-        let url = `/register?code=${code}`;
+        let url = `/survey?code=${code}`;
 
         // 确保编码唯一
         let exists = await db.select().from(qrCodes).where(eq(qrCodes.code, code));
         while (exists.length > 0) {
           code = generateCode();
-          url = `/register?code=${code}`;
+          url = `/survey?code=${code}`;
           exists = await db.select().from(qrCodes).where(eq(qrCodes.code, code));
         }
 
