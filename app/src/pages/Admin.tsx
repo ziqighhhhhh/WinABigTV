@@ -23,20 +23,22 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { QRCodeSVG } from "qrcode.react";
+import { worldCupTeams } from "@/lib/worldcup-teams";
+import { surveyQuestions } from "@/lib/survey-questions";
 import {
   Search,
   LayoutDashboard,
-  Package,
-  ShoppingCart,
+  Users,
+  Trophy,
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightIcon,
   Plus,
   Download,
   Eye,
-  Users,
   Clock,
   LogOut,
+  FileDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -50,10 +52,18 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
+type TabType = "registration" | "customers" | "winners";
+
 export default function Admin() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>("registration");
+
+  // 生成二维码状态
   const [genCount, setGenCount] = useState(10);
   const [genCategory, setGenCategory] = useState("default");
+  const [genCustomerId, setGenCustomerId] = useState<string>("");
+
+  // 列表状态
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -64,6 +74,14 @@ export default function Admin() {
   const [detailTarget, setDetailTarget] = useState<number | null>(null);
   const pageSize = 10;
 
+  // 客户管理状态
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerCountry, setNewCustomerCountry] = useState("");
+  const [newCustomerContact, setNewCustomerContact] = useState("");
+
+  // 中奖筛选状态
+  const [winnerTeams, setWinnerTeams] = useState<string[]>(["", "", "", ""]);
+
   const utils = trpc.useUtils();
 
   const { data: qrList, isLoading: listLoading } = trpc.qrCode.list.useQuery({
@@ -73,6 +91,8 @@ export default function Admin() {
     status: statusFilter === "all" ? undefined : statusFilter,
     search: searchQuery || undefined,
   });
+
+  const { data: customersList } = trpc.qrCode.customers.useQuery();
 
   const generateMutation = trpc.qrCode.generate.useMutation({
     onSuccess: (data) => {
@@ -92,6 +112,29 @@ export default function Admin() {
     },
   });
 
+  const createCustomerMutation = trpc.qrCode.createCustomer.useMutation({
+    onSuccess: () => {
+      toast.success("客户创建成功");
+      setNewCustomerName("");
+      setNewCustomerCountry("");
+      setNewCustomerContact("");
+      utils.qrCode.customers.invalidate();
+    },
+    onError: (err) => {
+      toast.error("创建失败: " + err.message);
+    },
+  });
+
+  const winnersQuery = trpc.qrCode.winners.useQuery(
+    {
+      team1: winnerTeams[0],
+      team2: winnerTeams[1],
+      team3: winnerTeams[2],
+      team4: winnerTeams[3],
+    },
+    { enabled: false }
+  );
+
   const { data: detailData, isLoading: detailLoading } = trpc.qrCode.getDetail.useQuery(
     { id: detailTarget! },
     { enabled: detailTarget !== null }
@@ -102,7 +145,11 @@ export default function Admin() {
       toast.error("生成数量必须在 1-1000 之间");
       return;
     }
-    generateMutation.mutate({ count: genCount, category: genCategory });
+    generateMutation.mutate({
+      count: genCount,
+      category: genCategory,
+      customerId: genCustomerId ? Number(genCustomerId) : undefined,
+    });
   };
 
   const handleDelete = (id: number) => {
@@ -117,16 +164,75 @@ export default function Admin() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("admin_auth");
+    localStorage.removeItem("admin_token");
     navigate("/admin", { replace: true });
+  };
+
+  const handleCreateCustomer = () => {
+    if (!newCustomerName.trim()) {
+      toast.error("请输入客户名称");
+      return;
+    }
+    createCustomerMutation.mutate({
+      name: newCustomerName.trim(),
+      country: newCustomerCountry.trim() || undefined,
+      contact: newCustomerContact.trim() || undefined,
+    });
+  };
+
+  const handleSearchWinners = () => {
+    if (winnerTeams.some((t) => !t)) {
+      toast.error("请选择全部 4 支球队");
+      return;
+    }
+    if (new Set(winnerTeams).size !== 4) {
+      toast.error("请选择 4 支不同的球队");
+      return;
+    }
+    winnersQuery.refetch();
+  };
+
+  const exportWinnersToCSV = () => {
+    if (!winnersQuery.data || winnersQuery.data.length === 0) {
+      toast.error("没有中奖数据可导出");
+      return;
+    }
+
+    const headers = ["编码", "客户", "球队1", "球队2", "球队3", "球队4"];
+    const rows = winnersQuery.data.map((w) => [
+      w.code,
+      w.customerName || "未分配",
+      worldCupTeams.find((t) => t.id === w.teams[0])?.name || w.teams[0],
+      worldCupTeams.find((t) => t.id === w.teams[1])?.name || w.teams[1],
+      worldCupTeams.find((t) => t.id === w.teams[2])?.name || w.teams[2],
+      worldCupTeams.find((t) => t.id === w.teams[3])?.name || w.teams[3],
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `winners_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("CSV 导出成功");
+  };
+
+  const getCustomerName = (customerId?: number | null) => {
+    if (!customerId) return "未分配";
+    const customer = customersList?.find((c) => c.id === customerId);
+    return customer?.name || `客户 #${customerId}`;
   };
 
   const totalPages = qrList ? Math.ceil(qrList.total / pageSize) : 0;
 
   const navItems = [
-    { icon: LayoutDashboard, label: "报名管理", active: true },
-    { icon: ShoppingCart, label: "订单管理", active: false },
-    { icon: Package, label: "商品管理", active: false },
+    { icon: LayoutDashboard, label: "报名管理", tab: "registration" as TabType },
+    { icon: Users, label: "客户管理", tab: "customers" as TabType },
+    { icon: Trophy, label: "中奖筛选", tab: "winners" as TabType },
   ];
 
   return (
@@ -136,19 +242,20 @@ export default function Admin() {
       {/* 左侧导航栏 */}
       <aside className="w-64 bg-white border-r border-[#e5e7eb] flex-shrink-0 hidden md:flex flex-col">
         <div className="p-4 border-b border-[#e5e7eb]">
-          <p className="text-sm font-medium text-[#6b7280]">系统控制台</p>
+          <p className="text-sm font-medium text-[#6b7280]">虎头电池管理系统</p>
         </div>
         <nav className="flex-1 py-2">
           {navItems.map((item) => (
             <div
               key={item.label}
+              onClick={() => setActiveTab(item.tab)}
               className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-md cursor-pointer transition-colors ${
-                item.active
+                activeTab === item.tab
                   ? "bg-[#eff6ff] text-[#111827] font-medium relative"
                   : "text-[#6b7280] hover:bg-[#f9fafb]"
               }`}
             >
-              {item.active && (
+              {activeTab === item.tab && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#2563eb] rounded-r" />
               )}
               <item.icon size={18} />
@@ -165,7 +272,11 @@ export default function Admin() {
           <div className="flex items-center gap-2 text-sm text-[#6b7280]">
             <span>首页</span>
             <ChevronRightIcon size={14} />
-            <span className="text-[#111827] font-medium">报名管理</span>
+            <span className="text-[#111827] font-medium">
+              {activeTab === "registration" && "报名管理"}
+              {activeTab === "customers" && "客户管理"}
+              {activeTab === "winners" && "中奖筛选"}
+            </span>
           </div>
           <button
             onClick={handleLogout}
@@ -177,288 +288,494 @@ export default function Admin() {
         </header>
 
         <div className="p-6 space-y-6">
-          {/* 生成配置卡片 */}
-          <Card className="border border-[#e5e7eb] shadow-none">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold text-[#111827]">
-                批量生成二维码
-              </CardTitle>
-              <CardDescription className="text-sm text-[#6b7280]">
-                生成后将自动跳转至列表页
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-[#111827]">生成数量</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={genCount}
-                    onChange={(e) => setGenCount(Number(e.target.value))}
-                    className="h-10 border-[#e5e7eb] rounded-md focus:ring-2 focus:ring-blue-100 focus:border-[#2563eb]"
-                  />
-                  <p className="text-xs text-[#6b7280]">支持一次生成 1-1000 个二维码</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-[#111827]">报名分类</Label>
-                  <Select value={genCategory} onValueChange={setGenCategory}>
-                    <SelectTrigger className="h-10 border-[#e5e7eb] rounded-md">
-                      <SelectValue placeholder="选择分类" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">全部</SelectItem>
-                      <SelectItem value="activity">活动报名</SelectItem>
-                      <SelectItem value="meeting">会议签到</SelectItem>
-                      <SelectItem value="course">课程注册</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-[#6b7280]">选择对应的分类进行生成</p>
-                </div>
-              </div>
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={handleGenerate}
-                  disabled={generateMutation.isPending}
-                  className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg px-6 h-10 text-sm font-medium shadow-sm"
-                >
-                  {generateMutation.isPending ? (
-                    <span className="flex items-center gap-2">
-                      <Spinner className="size-4" />
-                      生成中...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Plus size={16} />
-                      立即生成
-                    </span>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 二维码列表卡片 */}
-          <Card className="border border-[#e5e7eb] shadow-none">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-semibold text-[#111827]">
-                二维码列表
-              </CardTitle>
-              <CardDescription className="text-sm text-[#6b7280]">
-                共 {qrList?.total || 0} 条记录
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* 过滤器 */}
-              <div className="flex flex-wrap gap-3 mb-4 pb-4 border-b border-[#e5e7eb]">
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-36 h-9 text-sm border-[#e5e7eb]">
-                    <SelectValue placeholder="全部分类" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">全部分类</SelectItem>
-                    <SelectItem value="default">全部</SelectItem>
-                    <SelectItem value="activity">活动报名</SelectItem>
-                    <SelectItem value="meeting">会议签到</SelectItem>
-                    <SelectItem value="course">课程注册</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-36 h-9 text-sm border-[#e5e7eb]">
-                    <SelectValue placeholder="全部状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">全部状态</SelectItem>
-                    <SelectItem value="unbound">未绑定</SelectItem>
-                    <SelectItem value="filled">已填写</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="flex-1" />
-
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="搜索编码"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-48 h-9 text-sm border-[#e5e7eb]"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPage(1);
-                      utils.qrCode.list.invalidate();
-                    }}
-                    className="h-9 border-[#e5e7eb]"
-                  >
-                    <Search size={14} className="mr-1" />
-                    搜索
-                  </Button>
-                </div>
-              </div>
-
-              {/* 表格 */}
-              {listLoading ? (
-                <div className="flex justify-center py-12">
-                  <Spinner className="size-8" />
-                </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-[#f9fafb] hover:bg-[#f9fafb]">
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">
-                            ID
-                          </TableHead>
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">
-                            二维码
-                          </TableHead>
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">
-                            编码
-                          </TableHead>
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">
-                            分类
-                          </TableHead>
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">
-                            绑定状态
-                          </TableHead>
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">
-                            创建时间
-                          </TableHead>
-                          <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider text-right">
-                            操作
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {qrList?.items.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={7} className="text-center py-12 text-[#6b7280]">
-                              暂无数据
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          qrList?.items.map((item) => (
-                            <TableRow
-                              key={item.id}
-                              className="hover:bg-[#f9fafb] transition-colors"
-                            >
-                              <TableCell className="text-sm text-[#111827]">
-                                {item.id}
-                              </TableCell>
-                              <TableCell>
-                                <button
-                                  onClick={() => setSelectedQrUrl(`${window.location.origin}${item.url}`)}
-                                  className="hover:scale-110 transition-transform"
-                                >
-                                  <QRCodeSVG value={`${window.location.origin}${item.url}`} size={32} level="L" />
-                                </button>
-                              </TableCell>
-                              <TableCell>
-                                <span className="inline-block px-2 py-0.5 bg-[#eff6ff] text-[#2563eb] text-xs font-mono font-medium rounded tracking-wider">
-                                  {item.code}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-sm text-[#111827]">
-                                {item.category === "default"
-                                  ? "全部"
-                                  : item.category === "activity"
-                                  ? "活动报名"
-                                  : item.category === "meeting"
-                                  ? "会议签到"
-                                  : item.category === "course"
-                                  ? "课程注册"
-                                  : item.category}
-                              </TableCell>
-                              <TableCell>
-                                {item.status === "unbound" ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[#6b7280] border-[#d1d5db] bg-[#f9fafb] text-xs font-normal"
-                                  >
-                                    未绑定
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-[#ecfdf5] text-[#059669] border-[#a7f3d0] hover:bg-[#d1fae5] text-xs font-normal">
-                                    已填写
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm text-[#6b7280]">
-                                {item.createdAt
-                                  ? new Date(item.createdAt).toLocaleString("zh-CN")
-                                  : "—"}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-3">
-                                  <button
-                                    onClick={() => setSelectedQrUrl(`${window.location.origin}${item.url}`)}
-                                    className="text-[#2563eb] text-sm hover:underline flex items-center gap-1"
-                                  >
-                                    <Download size={13} />
-                                    二维码
-                                  </button>
-                                  {item.status === "filled" && (
-                                    <button
-                                      onClick={() => setDetailTarget(item.id)}
-                                      className="text-[#059669] text-sm hover:underline flex items-center gap-1"
-                                    >
-                                      <Eye size={13} />
-                                      查看结果
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => handleDelete(item.id)}
-                                    className="text-red-500 text-sm hover:underline"
-                                  >
-                                    删除
-                                  </button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
+          {/* ===== 报名管理 ===== */}
+          {activeTab === "registration" && (
+            <>
+              {/* 生成配置卡片 */}
+              <Card className="border border-[#e5e7eb] shadow-none">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-semibold text-[#111827]">
+                    批量生成二维码
+                  </CardTitle>
+                  <CardDescription className="text-sm text-[#6b7280]">
+                    生成后将自动跳转至列表页
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-[#111827]">生成数量</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={genCount}
+                        onChange={(e) => setGenCount(Number(e.target.value))}
+                        className="h-10 border-[#e5e7eb] rounded-md focus:ring-2 focus:ring-blue-100 focus:border-[#2563eb]"
+                      />
+                      <p className="text-xs text-[#6b7280]">支持一次生成 1-1000 个二维码</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-[#111827]">报名分类</Label>
+                      <Select value={genCategory} onValueChange={setGenCategory}>
+                        <SelectTrigger className="h-10 border-[#e5e7eb] rounded-md">
+                          <SelectValue placeholder="选择分类" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">全部</SelectItem>
+                          <SelectItem value="activity">活动报名</SelectItem>
+                          <SelectItem value="meeting">会议签到</SelectItem>
+                          <SelectItem value="course">课程注册</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-[#6b7280]">选择对应的分类进行生成</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-[#111827]">分配客户</Label>
+                      <Select value={genCustomerId} onValueChange={setGenCustomerId}>
+                        <SelectTrigger className="h-10 border-[#e5e7eb] rounded-md">
+                          <SelectValue placeholder="选择客户（可选）" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">不分配</SelectItem>
+                          {customersList?.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-[#6b7280]">选择分发该批编码的客户</p>
+                    </div>
                   </div>
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={generateMutation.isPending}
+                      className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-lg px-6 h-10 text-sm font-medium shadow-sm"
+                    >
+                      {generateMutation.isPending ? (
+                        <span className="flex items-center gap-2">
+                          <Spinner className="size-4" />
+                          生成中...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Plus size={16} />
+                          立即生成
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-                  {/* 分页器 */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-[#e5e7eb]">
-                      <span className="text-sm text-[#6b7280]">
-                        共 {qrList?.total} 条 {pageSize}条/页
-                      </span>
+              {/* 二维码列表卡片 */}
+              <Card className="border border-[#e5e7eb] shadow-none">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-semibold text-[#111827]">
+                    二维码列表
+                  </CardTitle>
+                  <CardDescription className="text-sm text-[#6b7280]">
+                    共 {qrList?.total || 0} 条记录
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* 过滤器 */}
+                  <div className="flex flex-wrap gap-3 mb-4 pb-4 border-b border-[#e5e7eb]">
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger className="w-36 h-9 text-sm border-[#e5e7eb]">
+                        <SelectValue placeholder="全部分类" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">全部分类</SelectItem>
+                        <SelectItem value="default">全部</SelectItem>
+                        <SelectItem value="activity">活动报名</SelectItem>
+                        <SelectItem value="meeting">会议签到</SelectItem>
+                        <SelectItem value="course">课程注册</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-36 h-9 text-sm border-[#e5e7eb]">
+                        <SelectValue placeholder="全部状态" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">全部状态</SelectItem>
+                        <SelectItem value="unbound">未绑定</SelectItem>
+                        <SelectItem value="filled">已填写</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex-1" />
+
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="搜索编码"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-48 h-9 text-sm border-[#e5e7eb]"
+                      />
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="h-8 w-8 p-0 border-[#e5e7eb]"
+                        onClick={() => {
+                          setPage(1);
+                          utils.qrCode.list.invalidate();
+                        }}
+                        className="h-9 border-[#e5e7eb]"
                       >
-                        <ChevronLeft size={14} />
-                      </Button>
-                      <span className="text-sm text-[#111827] font-medium px-2">
-                        {page}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="h-8 w-8 p-0 border-[#e5e7eb]"
-                      >
-                        <ChevronRight size={14} />
+                        <Search size={14} className="mr-1" />
+                        搜索
                       </Button>
                     </div>
+                  </div>
+
+                  {/* 表格 */}
+                  {listLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Spinner className="size-8" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-[#f9fafb] hover:bg-[#f9fafb]">
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">ID</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">二维码</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">编码</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">分配客户</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">分类</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">绑定状态</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">创建时间</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider text-right">操作</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {qrList?.items.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center py-12 text-[#6b7280]">
+                                  暂无数据
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              qrList?.items.map((item) => (
+                                <TableRow key={item.id} className="hover:bg-[#f9fafb] transition-colors">
+                                  <TableCell className="text-sm text-[#111827]">{item.id}</TableCell>
+                                  <TableCell>
+                                    <button
+                                      onClick={() => setSelectedQrUrl(`${window.location.origin}${item.url}`)}
+                                      className="hover:scale-110 transition-transform"
+                                    >
+                                      <QRCodeSVG value={`${window.location.origin}${item.url}`} size={32} level="L" />
+                                    </button>
+                                  </TableCell>
+                                  <TableCell>
+                                    <span className="inline-block px-2 py-0.5 bg-[#eff6ff] text-[#2563eb] text-xs font-mono font-medium rounded tracking-wider">
+                                      {item.code}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-[#111827]">
+                                    {getCustomerName(item.customerId)}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-[#111827]">
+                                    {item.category === "default" ? "全部" : item.category === "activity" ? "活动报名" : item.category === "meeting" ? "会议签到" : item.category === "course" ? "课程注册" : item.category}
+                                  </TableCell>
+                                  <TableCell>
+                                    {item.status === "unbound" ? (
+                                      <Badge variant="outline" className="text-[#6b7280] border-[#d1d5db] bg-[#f9fafb] text-xs font-normal">未绑定</Badge>
+                                    ) : (
+                                      <Badge className="bg-[#ecfdf5] text-[#059669] border-[#a7f3d0] hover:bg-[#d1fae5] text-xs font-normal">已填写</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-[#6b7280]">
+                                    {item.createdAt ? new Date(item.createdAt).toLocaleString("zh-CN") : "—"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-3">
+                                      <button
+                                        onClick={() => setSelectedQrUrl(`${window.location.origin}${item.url}`)}
+                                        className="text-[#2563eb] text-sm hover:underline flex items-center gap-1"
+                                      >
+                                        <Download size={13} />
+                                        二维码
+                                      </button>
+                                      {item.status === "filled" && (
+                                        <button
+                                          onClick={() => setDetailTarget(item.id)}
+                                          className="text-[#059669] text-sm hover:underline flex items-center gap-1"
+                                        >
+                                          <Eye size={13} />
+                                          查看结果
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleDelete(item.id)}
+                                        className="text-red-500 text-sm hover:underline"
+                                      >
+                                        删除
+                                      </button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {/* 分页器 */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-[#e5e7eb]">
+                          <span className="text-sm text-[#6b7280]">共 {qrList?.total} 条 {pageSize}条/页</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="h-8 w-8 p-0 border-[#e5e7eb]"
+                          >
+                            <ChevronLeft size={14} />
+                          </Button>
+                          <span className="text-sm text-[#111827] font-medium px-2">{page}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="h-8 w-8 p-0 border-[#e5e7eb]"
+                          >
+                            <ChevronRight size={14} />
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* ===== 客户管理 ===== */}
+          {activeTab === "customers" && (
+            <>
+              <Card className="border border-[#e5e7eb] shadow-none">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-semibold text-[#111827]">新增客户</CardTitle>
+                  <CardDescription className="text-sm text-[#6b7280]">
+                    添加负责分发编码的当地客户
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>客户名称</Label>
+                      <Input
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        placeholder="输入客户名称"
+                        className="h-10 border-[#e5e7eb]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>国家/地区</Label>
+                      <Select value={newCustomerCountry} onValueChange={setNewCustomerCountry}>
+                        <SelectTrigger className="h-10 border-[#e5e7eb]">
+                          <SelectValue placeholder="选择国家" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">未选择</SelectItem>
+                          <SelectItem value="morocco">摩洛哥</SelectItem>
+                          <SelectItem value="nigeria">尼日利亚</SelectItem>
+                          <SelectItem value="iraq">伊拉克</SelectItem>
+                          <SelectItem value="algeria">阿尔及利亚</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>联系人</Label>
+                      <Input
+                        value={newCustomerContact}
+                        onChange={(e) => setNewCustomerContact(e.target.value)}
+                        placeholder="输入联系人信息"
+                        className="h-10 border-[#e5e7eb]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleCreateCustomer}
+                      disabled={createCustomerMutation.isPending}
+                      className="bg-[#2563eb] hover:bg-[#1d4ed8]"
+                    >
+                      {createCustomerMutation.isPending ? "创建中..." : "创建客户"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-[#e5e7eb] shadow-none">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-semibold text-[#111827]">客户列表</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-[#f9fafb]">
+                        <TableHead className="text-xs font-medium text-[#6b7280] uppercase">ID</TableHead>
+                        <TableHead className="text-xs font-medium text-[#6b7280] uppercase">客户名称</TableHead>
+                        <TableHead className="text-xs font-medium text-[#6b7280] uppercase">国家/地区</TableHead>
+                        <TableHead className="text-xs font-medium text-[#6b7280] uppercase">联系人</TableHead>
+                        <TableHead className="text-xs font-medium text-[#6b7280] uppercase">创建时间</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {customersList?.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12 text-[#6b7280]">
+                            暂无客户
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        customersList?.map((c) => (
+                          <TableRow key={c.id} className="hover:bg-[#f9fafb]">
+                            <TableCell className="text-sm">{c.id}</TableCell>
+                            <TableCell className="text-sm font-medium">{c.name}</TableCell>
+                            <TableCell className="text-sm">
+                              {c.country === "morocco" ? "摩洛哥" : c.country === "nigeria" ? "尼日利亚" : c.country === "iraq" ? "伊拉克" : c.country === "algeria" ? "阿尔及利亚" : c.country || "—"}
+                            </TableCell>
+                            <TableCell className="text-sm">{c.contact || "—"}</TableCell>
+                            <TableCell className="text-sm text-[#6b7280]">
+                              {c.createdAt ? new Date(c.createdAt).toLocaleString("zh-CN") : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* ===== 中奖筛选 ===== */}
+          {activeTab === "winners" && (
+            <>
+              <Card className="border border-[#e5e7eb] shadow-none">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-semibold text-[#111827]">筛选中奖者</CardTitle>
+                  <CardDescription className="text-sm text-[#6b7280]">
+                    选择实际进入世界杯前四强的球队，系统将自动匹配预测正确的用户
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[0, 1, 2, 3].map((index) => (
+                      <div key={index}>
+                        <Label className="text-sm font-medium mb-2 block">球队 {index + 1}</Label>
+                        <Select
+                          value={winnerTeams[index]}
+                          onValueChange={(value) => {
+                            const newTeams = [...winnerTeams];
+                            newTeams[index] = value;
+                            setWinnerTeams(newTeams);
+                          }}
+                        >
+                          <SelectTrigger className="h-10 border-[#e5e7eb]">
+                            <SelectValue placeholder="选择球队" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {worldCupTeams.map((team) => (
+                              <SelectItem
+                                key={team.id}
+                                value={team.id}
+                                disabled={winnerTeams.includes(team.id) && winnerTeams[index] !== team.id}
+                              >
+                                {team.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end gap-3 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setWinnerTeams(["", "", "", ""])}
+                      className="border-[#e5e7eb]"
+                    >
+                      重置
+                    </Button>
+                    <Button
+                      onClick={handleSearchWinners}
+                      disabled={winnersQuery.isFetching}
+                      className="bg-[#2563eb] hover:bg-[#1d4ed8]"
+                    >
+                      {winnersQuery.isFetching ? "筛选中..." : "筛选中奖者"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {winnersQuery.data && (
+                <Card className="border border-[#e5e7eb] shadow-none">
+                  <CardHeader className="pb-4 flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-semibold text-[#111827]">
+                        中奖名单
+                      </CardTitle>
+                      <CardDescription className="text-sm text-[#6b7280]">
+                        共 {winnersQuery.data.length} 位中奖者
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={exportWinnersToCSV}
+                      className="border-[#e5e7eb]"
+                    >
+                      <FileDown size={16} className="mr-2" />
+                      导出 CSV
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {winnersQuery.data.length === 0 ? (
+                      <div className="text-center py-12 text-[#6b7280]">
+                        <Trophy size={48} className="mx-auto mb-4 text-gray-300" />
+                        <p>没有匹配的中奖者</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-[#f9fafb]">
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">编码</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">客户</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">预测球队</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {winnersQuery.data.map((winner, idx) => (
+                            <TableRow key={idx} className="hover:bg-[#f9fafb]">
+                              <TableCell>
+                                <span className="inline-block px-2 py-0.5 bg-[#eff6ff] text-[#2563eb] text-xs font-mono font-medium rounded tracking-wider">
+                                  {winner.code.toUpperCase()}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-sm">{winner.customerName || "未分配"}</TableCell>
+                              <TableCell className="text-sm">
+                                {winner.teams.map((teamId) => worldCupTeams.find((t) => t.id === teamId)?.name || teamId).join(", ")}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+            </>
+          )}
         </div>
       </main>
 
@@ -496,11 +813,7 @@ export default function Admin() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              className="border-[#e5e7eb]"
-            >
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="border-[#e5e7eb]">
               取消
             </Button>
             <Button
@@ -535,22 +848,43 @@ export default function Admin() {
           ) : detailData?.names ? (
             <div className="space-y-4 py-2">
               <div className="space-y-3">
-                {[
-                  { label: "第一个名字", value: detailData.names.name1 },
-                  { label: "第二个名字", value: detailData.names.name2 },
-                  { label: "第三个名字", value: detailData.names.name3 },
-                  { label: "第四个名字", value: detailData.names.name4 },
-                ].map(({ label, value }, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between px-4 py-3 bg-[#f9fafb] rounded-md border border-[#e5e7eb]"
-                  >
-                    <span className="text-sm text-[#6b7280]">{label}</span>
-                    <span className="text-sm font-medium text-[#111827]">
-                      {value || "—"}
-                    </span>
+                {detailData.names.surveyAnswers && (
+                  <div className="px-4 py-3 bg-[#f9fafb] rounded-md border border-[#e5e7eb]">
+                    <p className="text-sm font-medium text-[#111827] mb-2">调研答案</p>
+                    <div className="space-y-1">
+                      {(() => {
+                        try {
+                          const answers = JSON.parse(detailData.names.surveyAnswers as string);
+                          return surveyQuestions.map((q, idx) => (
+                            <p key={q.id} className="text-xs text-[#6b7280]">
+                              {idx + 1}. {q.question.en} → {" "}
+                              <span className="text-[#111827] font-medium">
+                                {q.options.find((o) => o.value === answers[idx])?.label.en || answers[idx]}
+                              </span>
+                            </p>
+                          ));
+                        } catch {
+                          return <p className="text-xs text-[#6b7280]">无法解析</p>;
+                        }
+                      })()}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {detailData.names.team1 && (
+                  <div className="px-4 py-3 bg-[#f9fafb] rounded-md border border-[#e5e7eb]">
+                    <p className="text-sm font-medium text-[#111827] mb-2">预测球队</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[detailData.names.team1, detailData.names.team2, detailData.names.team3, detailData.names.team4]
+                        .filter(Boolean)
+                        .map((teamId, idx) => (
+                          <span key={idx} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                            {worldCupTeams.find((t) => t.id === teamId)?.name || teamId}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator className="bg-[#e5e7eb]" />
@@ -572,11 +906,7 @@ export default function Admin() {
           )}
 
           <DialogFooter className="pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setDetailTarget(null)}
-              className="border-[#e5e7eb]"
-            >
+            <Button variant="outline" onClick={() => setDetailTarget(null)} className="border-[#e5e7eb]">
               关闭
             </Button>
           </DialogFooter>
