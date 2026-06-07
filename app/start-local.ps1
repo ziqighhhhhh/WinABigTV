@@ -69,17 +69,14 @@ if (Test-Path ".env") {
 APP_ID=tiger-head-worldcup
 APP_SECRET=your-secret-key-change-me
 
-# Database (MySQL)
-# Example for XAMPP/WAMP: mysql://root:@localhost:3306/worldcup
-# Example for Docker: mysql://root:password@localhost:3306/worldcup
-DATABASE_URL=mysql://root:password@localhost:3306/worldcup
+# Database (SQLite)
+DATABASE_URL=sqlite:./worldcup.db
 
 # Admin
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 "@ | Out-File -FilePath ".env" -Encoding UTF8
     Write-Ok ".env 文件已创建"
-    Write-Tip "请用文本编辑器打开 .env 文件，修改数据库配置"
 }
 Write-Host ""
 
@@ -106,24 +103,19 @@ Write-Host ""
 
 # 5. 数据库检查
 Write-Step 5 "数据库检查..."
-Write-Tip "请确保 MySQL 数据库已启动"
 
-$mysql = Get-Command mysql -ErrorAction SilentlyContinue
-if (-not $mysql) {
-    Write-Warn "未检测到 MySQL 客户端"
-    Write-Host "    如果使用 XAMPP/WAMP，请手动启动 MySQL" -ForegroundColor DarkGray
-    Write-Host "    如果使用 Docker，请运行：" -ForegroundColor DarkGray
-    Write-Host "    docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=worldcup mysql:8" -ForegroundColor DarkGray
+if (Test-Path "./worldcup.db") {
+    Write-Ok "SQLite 数据库已存在"
 } else {
-    Write-Ok "检测到 MySQL 客户端"
+    Write-Warn "SQLite 数据库不存在，将自动创建"
 }
 
 Write-Host ""
 Write-Tip "数据库配置在 .env 文件中"
-Write-Host "    DATABASE_URL=mysql://user:password@host:port/database" -ForegroundColor DarkGray
+Write-Host "    DATABASE_URL=sqlite:./worldcup.db" -ForegroundColor DarkGray
 Write-Host ""
 Write-Tip "首次运行需要执行迁移"
-Write-Host "    npx drizzle-kit migrate" -ForegroundColor DarkGray
+Write-Host "    npx drizzle-kit push" -ForegroundColor DarkGray
 Write-Host ""
 Write-Tip "首次运行需要 Seed 管理员"
 Write-Host "    npx tsx db/seed.ts" -ForegroundColor DarkGray

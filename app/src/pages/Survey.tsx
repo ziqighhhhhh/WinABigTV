@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { ChevronRight, ChevronLeft, HelpCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, HelpCircle, QrCode } from 'lucide-react';
 
 export default function Survey() {
   const { t, i18n } = useTranslation();
@@ -57,6 +57,17 @@ export default function Survey() {
           <div className="flex justify-end mb-4">
             <LanguageSwitcher />
           </div>
+
+          {code && (
+            <div className="mb-5 flex justify-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-md">
+                <QrCode size={14} className="text-green-600" />
+                <span className="text-sm font-mono font-semibold tracking-[0.18em] text-green-700">
+                  {code.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* 进度条 */}
           <div className="mb-6">

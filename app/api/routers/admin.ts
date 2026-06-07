@@ -3,7 +3,7 @@ import { createRouter, publicQuery } from "../middleware";
 import { getDb } from "../queries/connection";
 import { admins } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { hashPassword, verifyPassword, signToken } from "../lib/auth";
+import { verifyPassword, signToken } from "../lib/auth";
 
 export const adminRouter = createRouter({
   login: publicQuery

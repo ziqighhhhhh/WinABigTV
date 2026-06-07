@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Trophy, ChevronRight, AlertCircle } from 'lucide-react';
+import { Trophy, ChevronRight, AlertCircle, QrCode } from 'lucide-react';
 
 export default function Prediction() {
   const { t } = useTranslation();
@@ -83,6 +83,17 @@ export default function Prediction() {
           <div className="flex justify-end mb-4">
             <LanguageSwitcher />
           </div>
+
+          {code && (
+            <div className="mb-5 flex justify-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-md">
+                <QrCode size={14} className="text-green-600" />
+                <span className="text-sm font-mono font-semibold tracking-[0.18em] text-green-700">
+                  {code.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* 标题 */}
           <div className="text-center mb-8">

@@ -87,7 +87,6 @@ export default function Admin() {
   const { data: qrList, isLoading: listLoading } = trpc.qrCode.list.useQuery({
     page,
     limit: pageSize,
-    category: categoryFilter === "all" ? undefined : categoryFilter,
     status: statusFilter === "all" ? undefined : statusFilter,
     search: searchQuery || undefined,
   });
@@ -119,9 +118,20 @@ export default function Admin() {
       setNewCustomerCountry("");
       setNewCustomerContact("");
       utils.qrCode.customers.invalidate();
+      utils.qrCode.list.invalidate();
     },
     onError: (err) => {
       toast.error("创建失败: " + err.message);
+    },
+  });
+
+  const assignCustomerMutation = trpc.qrCode.assignCustomer.useMutation({
+    onSuccess: () => {
+      toast.success("客户分配已更新");
+      utils.qrCode.list.invalidate();
+    },
+    onError: (err) => {
+      toast.error("分配失败: " + err.message);
     },
   });
 
@@ -147,7 +157,6 @@ export default function Admin() {
     }
     generateMutation.mutate({
       count: genCount,
-      category: genCategory,
       customerId: genCustomerId ? Number(genCustomerId) : undefined,
     });
   };
@@ -315,7 +324,7 @@ export default function Admin() {
                       />
                       <p className="text-xs text-[#6b7280]">支持一次生成 1-1000 个二维码</p>
                     </div>
-                    <div className="space-y-2">
+                    <div className="hidden">
                       <Label className="text-sm font-medium text-[#111827]">报名分类</Label>
                       <Select value={genCategory} onValueChange={setGenCategory}>
                         <SelectTrigger className="h-10 border-[#e5e7eb] rounded-md">
@@ -332,12 +341,17 @@ export default function Admin() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-[#111827]">分配客户</Label>
-                      <Select value={genCustomerId} onValueChange={setGenCustomerId}>
+                      <Select
+                        value={genCustomerId || "none"}
+                        onValueChange={(value) =>
+                          setGenCustomerId(value === "none" ? "" : value)
+                        }
+                      >
                         <SelectTrigger className="h-10 border-[#e5e7eb] rounded-md">
                           <SelectValue placeholder="选择客户（可选）" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">不分配</SelectItem>
+                          <SelectItem value="none">不分配</SelectItem>
                           {customersList?.map((c) => (
                             <SelectItem key={c.id} value={String(c.id)}>
                               {c.name}
@@ -476,8 +490,29 @@ export default function Admin() {
                                       {item.code}
                                     </span>
                                   </TableCell>
-                                  <TableCell className="text-sm text-[#111827]">
-                                    {getCustomerName(item.customerId)}
+                                  <TableCell className="text-sm text-[#111827] min-w-40">
+                                    <Select
+                                      value={item.customerId ? String(item.customerId) : "none"}
+                                      onValueChange={(value) =>
+                                        assignCustomerMutation.mutate({
+                                          id: item.id,
+                                          customerId: value === "none" ? null : Number(value),
+                                        })
+                                      }
+                                      disabled={assignCustomerMutation.isPending}
+                                    >
+                                      <SelectTrigger className="h-8 border-[#e5e7eb] text-xs">
+                                        <SelectValue placeholder={getCustomerName(item.customerId)} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="none">未分配</SelectItem>
+                                        {customersList?.map((customer) => (
+                                          <SelectItem key={customer.id} value={String(customer.id)}>
+                                            {customer.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
                                   </TableCell>
                                   <TableCell className="text-sm text-[#111827]">
                                     {item.category === "default" ? "全部" : item.category === "activity" ? "活动报名" : item.category === "meeting" ? "会议签到" : item.category === "course" ? "课程注册" : item.category}
@@ -580,18 +615,12 @@ export default function Admin() {
                     </div>
                     <div className="space-y-2">
                       <Label>国家/地区</Label>
-                      <Select value={newCustomerCountry} onValueChange={setNewCustomerCountry}>
-                        <SelectTrigger className="h-10 border-[#e5e7eb]">
-                          <SelectValue placeholder="选择国家" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">未选择</SelectItem>
-                          <SelectItem value="morocco">摩洛哥</SelectItem>
-                          <SelectItem value="nigeria">尼日利亚</SelectItem>
-                          <SelectItem value="iraq">伊拉克</SelectItem>
-                          <SelectItem value="algeria">阿尔及利亚</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        value={newCustomerCountry}
+                        onChange={(e) => setNewCustomerCountry(e.target.value)}
+                        placeholder="输入国家/地区（可选）"
+                        className="h-10 border-[#e5e7eb]"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>联系人</Label>

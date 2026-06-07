@@ -40,7 +40,9 @@ export default function Home() {
   // 如果URL中有code参数，自动验证并跳转
   useEffect(() => {
     if (urlCode) {
-      verifyMutation.mutate({ code: urlCode })
+      const normalizedCode = urlCode.trim().toUpperCase()
+      setCode(normalizedCode)
+      verifyMutation.mutate({ code: normalizedCode })
     }
   }, [urlCode])
 
@@ -59,8 +61,19 @@ export default function Home() {
   // URL中有code参数时，显示加载状态
   if (autoChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50 flex items-center justify-center">
-        <Spinner className="size-8" />
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-sm w-full border border-[#e5e7eb] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+          <CardContent className="pt-8 pb-8 px-6 text-center">
+            <Spinner className="size-8 mx-auto mb-4" />
+            <p className="text-sm text-[#6b7280] mb-2">{t('home.autoChecking')}</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-md">
+              <QrCode size={14} className="text-green-600" />
+              <span className="text-sm font-mono font-semibold tracking-[0.18em] text-green-700">
+                {code || urlCode.toUpperCase()}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }

@@ -34,13 +34,13 @@ export const qrCodeRouter = createRouter({
       for (let i = 0; i < input.count; i++) {
         let code = generateCode();
         let uuid = generateUUID();
-        let url = `/survey?code=${code}`;
+        let url = `/?code=${code}`;
 
         // 确保编码唯一
         let exists = await db.select().from(qrCodes).where(eq(qrCodes.code, code));
         while (exists.length > 0) {
           code = generateCode();
-          url = `/survey?code=${code}`;
+          url = `/?code=${code}`;
           exists = await db.select().from(qrCodes).where(eq(qrCodes.code, code));
         }
 
@@ -52,7 +52,7 @@ export const qrCodeRouter = createRouter({
           customerId: input.customerId || null,
         });
         generated.push({
-          id: Number(result[0].insertId),
+          id: Number(result.lastInsertRowid),
           code,
           url,
         });
@@ -118,6 +118,35 @@ export const qrCodeRouter = createRouter({
       return { success: true };
     }),
 
+  assignCustomer: authenticatedQuery
+    .input(
+      z.object({
+        id: z.number(),
+        customerId: z.number().nullable(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+
+      if (input.customerId !== null) {
+        const customerList = await db
+          .select({ id: customers.id })
+          .from(customers)
+          .where(eq(customers.id, input.customerId));
+
+        if (customerList.length === 0) {
+          throw new Error("Customer not found");
+        }
+      }
+
+      await db
+        .update(qrCodes)
+        .set({ customerId: input.customerId })
+        .where(eq(qrCodes.id, input.id));
+
+      return { success: true };
+    }),
+
   categories: publicQuery.query(async () => {
     const db = getDb();
     const cats = await db.select().from(categories).orderBy(desc(categories.createdAt));
@@ -153,6 +182,11 @@ export const qrCodeRouter = createRouter({
               name2: record.name2,
               name3: record.name3,
               name4: record.name4,
+              surveyAnswers: record.surveyAnswers,
+              team1: record.team1,
+              team2: record.team2,
+              team3: record.team3,
+              team4: record.team4,
               lastModified: record.lastModified,
             }
           : null,
@@ -186,7 +220,49 @@ export const qrCodeRouter = createRouter({
     .mutation(async ({ input }) => {
       const db = getDb();
       const result = await db.insert(customers).values(input);
-      return { id: Number(result[0].insertId) };
+      return { id: Number(result.lastInsertRowid) };
+    }),
+
+  responses: authenticatedQuery
+    .input(z.object({ customerId: z.number().optional() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+
+      const rows = await db
+        .select({
+          qr: qrCodes,
+          record: nameRecords,
+          customer: customers,
+        })
+        .from(qrCodes)
+        .leftJoin(nameRecords, eq(nameRecords.qrCodeId, qrCodes.id))
+        .leftJoin(customers, eq(qrCodes.customerId, customers.id))
+        .where(
+          input.customerId
+            ? eq(qrCodes.customerId, input.customerId)
+            : undefined
+        )
+        .orderBy(desc(qrCodes.createdAt));
+
+      return rows.map(({ qr, record, customer }) => ({
+        id: qr.id,
+        code: qr.code,
+        status: qr.status,
+        category: qr.category,
+        createdAt: qr.createdAt,
+        customerId: qr.customerId,
+        customerName: customer?.name ?? null,
+        customerCountry: customer?.country ?? null,
+        customerContact: customer?.contact ?? null,
+        names: record
+          ? [record.name1, record.name2, record.name3, record.name4]
+          : [null, null, null, null],
+        teams: record
+          ? [record.team1, record.team2, record.team3, record.team4]
+          : [null, null, null, null],
+        surveyAnswers: record?.surveyAnswers ?? null,
+        lastModified: record?.lastModified ?? null,
+      }));
     }),
 
   // 中奖筛选

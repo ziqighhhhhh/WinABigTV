@@ -25,11 +25,17 @@ export default function AdminLogin() {
   })
 
   const handleLogin = () => {
-    if (!username || !password) {
+    const trimmedUsername = username.trim()
+    const trimmedPassword = password.trim()
+
+    if (!trimmedUsername || !trimmedPassword) {
       toast.error('请输入用户名和密码')
       return
     }
-    loginMutation.mutate({ username, password })
+    loginMutation.mutate({
+      username: trimmedUsername,
+      password: trimmedPassword,
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

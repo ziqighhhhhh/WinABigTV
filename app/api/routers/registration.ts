@@ -58,16 +58,20 @@ export const registrationRouter = createRouter({
   // 提交预测记录（编码使用后立即标记为filled，不可再次进入）
   submit: publicQuery
     .input(
-      z.object({
-        code: z.string(),
-        surveyAnswers: z.array(z.string()),
-        teams: z.tuple([
-          z.string(),
-          z.string(),
-          z.string(),
-          z.string(),
-        ]),
-      })
+      z
+        .object({
+          code: z.string(),
+          names: z
+            .tuple([z.string(), z.string(), z.string(), z.string()])
+            .optional(),
+          surveyAnswers: z.array(z.string()).optional(),
+          teams: z
+            .tuple([z.string(), z.string(), z.string(), z.string()])
+            .optional(),
+        })
+        .refine((data) => data.names || data.teams, {
+          message: "Either names or teams must be provided",
+        })
     )
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -90,11 +94,17 @@ export const registrationRouter = createRouter({
       // 创建预测记录
       await db.insert(nameRecords).values({
         qrCodeId: qr.id,
-        surveyAnswers: JSON.stringify(input.surveyAnswers),
-        team1: input.teams[0],
-        team2: input.teams[1],
-        team3: input.teams[2],
-        team4: input.teams[3],
+        name1: input.names?.[0] ?? null,
+        name2: input.names?.[1] ?? null,
+        name3: input.names?.[2] ?? null,
+        name4: input.names?.[3] ?? null,
+        surveyAnswers: input.surveyAnswers
+          ? JSON.stringify(input.surveyAnswers)
+          : null,
+        team1: input.teams?.[0] ?? null,
+        team2: input.teams?.[1] ?? null,
+        team3: input.teams?.[2] ?? null,
+        team4: input.teams?.[3] ?? null,
       });
 
       // 标记编码为已使用
