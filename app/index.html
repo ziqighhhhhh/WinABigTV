@@ -4,9 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QRCode Manager</title>
+    <script>
+      window.__showStartupError = function (message) {
+        var root = document.getElementById("root");
+        if (!root) return;
+        root.innerHTML =
+          '<main style="min-height:100vh;padding:40px 16px;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif">' +
+          '<section style="max-width:640px;margin:0 auto;background:white;border:1px solid #fecaca;border-radius:8px;padding:24px;box-shadow:0 10px 30px rgba(15,23,42,.08)">' +
+          '<p style="margin:0 0 8px;color:#dc2626;font-weight:700;font-size:14px">Frontend startup error</p>' +
+          '<h1 style="margin:0 0 16px;font-size:22px">The page could not finish loading</h1>' +
+          '<pre style="white-space:pre-wrap;overflow:auto;background:#020617;color:white;border-radius:6px;padding:12px;font-size:12px;line-height:1.5">' +
+          String(message).replace(/[<>&]/g, function (char) {
+            return { "<": "&lt;", ">": "&gt;", "&": "&amp;" }[char];
+          }) +
+          "</pre></section></main>";
+      };
+      window.addEventListener("error", function (event) {
+        window.__showStartupError(event.message || "Unknown script error");
+      });
+      window.addEventListener("unhandledrejection", function (event) {
+        var reason = event.reason;
+        window.__showStartupError(reason && reason.stack ? reason.stack : reason || "Unhandled promise rejection");
+      });
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#eef8f0;color:#334155;font-family:Arial,sans-serif">
+        <div style="background:white;border:1px solid #d1fae5;border-radius:8px;padding:24px 28px;box-shadow:0 18px 50px rgba(15,118,73,.12);font-size:14px">
+          Loading Tiger Head World Cup campaign...
+        </div>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
