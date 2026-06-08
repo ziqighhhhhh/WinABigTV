@@ -7,6 +7,12 @@ import { TRPCProvider } from "@/providers/trpc"
 import App from './App.tsx'
 import AppErrorBoundary from './components/AppErrorBoundary'
 
+declare global {
+  interface Window {
+    __appMounted?: boolean;
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
@@ -18,3 +24,5 @@ createRoot(document.getElementById('root')!).render(
     </AppErrorBoundary>
   </StrictMode>,
 )
+
+window.__appMounted = true;

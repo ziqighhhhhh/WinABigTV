@@ -26,6 +26,18 @@
         var reason = event.reason;
         window.__showStartupError(reason && reason.stack ? reason.stack : reason || "Unhandled promise rejection");
       });
+      window.__appMounted = false;
+      window.setTimeout(function () {
+        if (window.__appMounted) return;
+        var script = document.querySelector('script[type="module"][src]');
+        window.__showStartupError(
+          "The HTML inline script is running, but the React app did not mount within 8 seconds.\\n\\n" +
+            "Module script: " +
+            (script ? script.getAttribute("src") : "not found") +
+            "\\n\\nCheck DevTools > Network to confirm the module script finished loading with 200 OK. " +
+            "If it is pending or blocked, disable browser extensions or allow JavaScript for this site."
+        );
+      }, 8000);
     </script>
   </head>
   <body>
