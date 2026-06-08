@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import { createRouter, publicQuery } from "../middleware";
 import { getDb } from "../queries/connection";
 import { nameRecords, qrCodes, scanRecords } from "@db/schema";
@@ -77,60 +77,76 @@ export const registrationRouter = createRouter({
 
   submit: publicQuery.input(submitInput).mutation(async ({ input }) => {
     const db = getDb();
-    const qrList = await db
-      .select()
-      .from(qrCodes)
-      .where(eq(qrCodes.code, input.code.toUpperCase()));
-
-    if (qrList.length === 0) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Code not found" });
-    }
-
-    const qr = qrList[0];
-    if (qr.currentScans >= qr.maxScans) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "This QR code has reached its maximum scan limit",
-      });
-    }
-
     const serializedSurveyAnswers = input.surveyAnswers
       ? JSON.stringify(input.surveyAnswers)
       : null;
 
-    await db.insert(nameRecords).values({
-      qrCodeId: qr.id,
-      name1: input.names?.[0] ?? null,
-      name2: input.names?.[1] ?? null,
-      name3: input.names?.[2] ?? null,
-      name4: input.names?.[3] ?? null,
-      surveyAnswers: serializedSurveyAnswers,
-      team1: input.teams?.[0] ?? null,
-      team2: input.teams?.[1] ?? null,
-      team3: input.teams?.[2] ?? null,
-      team4: input.teams?.[3] ?? null,
-    });
+    db.transaction((tx) => {
+      const updatedQrCodes = tx
+        .update(qrCodes)
+        .set({
+          currentScans: sql`${qrCodes.currentScans} + 1`,
+          status: sql`CASE WHEN ${qrCodes.currentScans} + 1 >= ${qrCodes.maxScans} THEN 'filled' ELSE 'unbound' END`,
+        })
+        .where(
+          and(
+            eq(qrCodes.code, input.code.toUpperCase()),
+            lt(qrCodes.currentScans, qrCodes.maxScans)
+          )
+        )
+        .returning({
+          id: qrCodes.id,
+        })
+        .all();
 
-    await db.insert(scanRecords).values({
-      qrCodeId: qr.id,
-      name: input.responderName?.trim() || "Anonymous",
-      contact: input.responderContact?.trim() || "Not provided",
-      country: input.responderCountry?.trim() || null,
-      surveyAnswers: serializedSurveyAnswers,
-      team1: input.teams?.[0] ?? null,
-      team2: input.teams?.[1] ?? null,
-      team3: input.teams?.[2] ?? null,
-      team4: input.teams?.[3] ?? null,
-    });
+      if (updatedQrCodes.length === 0) {
+        const existingQrCodes = tx
+          .select({ id: qrCodes.id })
+          .from(qrCodes)
+          .where(eq(qrCodes.code, input.code.toUpperCase()))
+          .all();
 
-    const nextScanCount = qr.currentScans + 1;
-    await db
-      .update(qrCodes)
-      .set({
-        currentScans: nextScanCount,
-        status: nextScanCount >= qr.maxScans ? "filled" : "unbound",
-      })
-      .where(eq(qrCodes.id, qr.id));
+        if (existingQrCodes.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Code not found" });
+        }
+
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This QR code has reached its maximum scan limit",
+        });
+      }
+
+      const qrCodeId = updatedQrCodes[0].id;
+
+      tx.insert(nameRecords)
+        .values({
+          qrCodeId,
+          name1: input.names?.[0] ?? null,
+          name2: input.names?.[1] ?? null,
+          name3: input.names?.[2] ?? null,
+          name4: input.names?.[3] ?? null,
+          surveyAnswers: serializedSurveyAnswers,
+          team1: input.teams?.[0] ?? null,
+          team2: input.teams?.[1] ?? null,
+          team3: input.teams?.[2] ?? null,
+          team4: input.teams?.[3] ?? null,
+        })
+        .run();
+
+      tx.insert(scanRecords)
+        .values({
+          qrCodeId,
+          name: input.responderName?.trim() || "Anonymous",
+          contact: input.responderContact?.trim() || "Not provided",
+          country: input.responderCountry?.trim() || null,
+          surveyAnswers: serializedSurveyAnswers,
+          team1: input.teams?.[0] ?? null,
+          team2: input.teams?.[1] ?? null,
+          team3: input.teams?.[2] ?? null,
+          team4: input.teams?.[3] ?? null,
+        })
+        .run();
+    });
 
     return { success: true };
   }),
