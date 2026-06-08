@@ -11,7 +11,7 @@ export default function LanguageSwitcher() {
   }, [i18n.language]);
 
   const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
+    void i18n.changeLanguage(lng);
     localStorage.setItem('preferred_language', lng);
     document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lng;
@@ -29,9 +29,10 @@ export default function LanguageSwitcher() {
       {languages.map((lang) => (
         <button
           key={lang.code}
+          type="button"
           onClick={() => changeLanguage(lang.code)}
           className={`px-2 py-1 text-xs rounded transition-colors ${
-            i18n.language === lang.code
+            (i18n.resolvedLanguage || i18n.language).startsWith(lang.code)
               ? 'bg-blue-500 text-white font-medium'
               : 'text-gray-600 hover:bg-gray-100'
           }`}

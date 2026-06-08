@@ -4,69 +4,61 @@ export interface Team {
   group: string;
 }
 
-// 2026 FIFA World Cup 参赛球队（48支）
-// 注意：实际参赛名单以 FIFA 官方公布为准
+// 2026 FIFA World Cup qualified teams, verified against FIFA's qualified-team list on 2026-06-08.
+// The final draw groups can be updated here when FIFA publishes the A-L group allocation.
 export const worldCupTeams: Team[] = [
-  // A组
-  { id: "argentina", name: "Argentina", group: "A" },
-  { id: "mexico", name: "Mexico", group: "A" },
-  { id: "poland", name: "Poland", group: "A" },
-  // B组
-  { id: "brazil", name: "Brazil", group: "B" },
-  { id: "usa", name: "USA", group: "B" },
-  { id: "wales", name: "Wales", group: "B" },
-  // C组
-  { id: "france", name: "France", group: "C" },
-  { id: "denmark", name: "Denmark", group: "C" },
-  { id: "tunisia", name: "Tunisia", group: "C" },
-  // D组
-  { id: "spain", name: "Spain", group: "D" },
-  { id: "germany", name: "Germany", group: "D" },
-  { id: "japan", name: "Japan", group: "D" },
-  // E组
-  { id: "belgium", name: "Belgium", group: "E" },
-  { id: "croatia", name: "Croatia", group: "E" },
-  { id: "morocco", name: "Morocco", group: "E" },
-  // F组
-  { id: "england", name: "England", group: "F" },
-  { id: "netherlands", name: "Netherlands", group: "F" },
-  { id: "senegal", name: "Senegal", group: "F" },
-  // G组
-  { id: "portugal", name: "Portugal", group: "G" },
-  { id: "switzerland", name: "Switzerland", group: "G" },
-  { id: "cameroon", name: "Cameroon", group: "G" },
-  // H组
-  { id: "uruguay", name: "Uruguay", group: "H" },
-  { id: "ghana", name: "Ghana", group: "H" },
-  { id: "korea", name: "South Korea", group: "H" },
-  // I组
-  { id: "italy", name: "Italy", group: "I" },
-  { id: "ecuador", name: "Ecuador", group: "I" },
-  { id: "saudi", name: "Saudi Arabia", group: "I" },
-  // J组
-  { id: "colombia", name: "Colombia", group: "J" },
-  { id: "serbia", name: "Serbia", group: "J" },
-  { id: "qatar", name: "Qatar", group: "J" },
-  // K组
-  { id: "iran", name: "Iran", group: "K" },
-  { id: "canada", name: "Canada", group: "K" },
-  { id: "australia", name: "Australia", group: "K" },
-  // L组
-  { id: "nigeria", name: "Nigeria", group: "L" },
-  { id: "algeria", name: "Algeria", group: "L" },
-  { id: "egypt", name: "Egypt", group: "L" },
-  // M组
-  { id: "ivory", name: "Ivory Coast", group: "M" },
-  { id: "chile", name: "Chile", group: "M" },
-  { id: "costarica", name: "Costa Rica", group: "M" },
-  // N组
-  { id: "sweden", name: "Sweden", group: "N" },
-  { id: "ukraine", name: "Ukraine", group: "N" },
-  { id: "peru", name: "Peru", group: "N" },
+  { id: "canada", name: "Canada", group: "Host" },
+  { id: "mexico", name: "Mexico", group: "Host" },
+  { id: "usa", name: "United States", group: "Host" },
+  { id: "argentina", name: "Argentina", group: "CONMEBOL" },
+  { id: "brazil", name: "Brazil", group: "CONMEBOL" },
+  { id: "colombia", name: "Colombia", group: "CONMEBOL" },
+  { id: "ecuador", name: "Ecuador", group: "CONMEBOL" },
+  { id: "paraguay", name: "Paraguay", group: "CONMEBOL" },
+  { id: "uruguay", name: "Uruguay", group: "CONMEBOL" },
+  { id: "austria", name: "Austria", group: "UEFA" },
+  { id: "belgium", name: "Belgium", group: "UEFA" },
+  { id: "croatia", name: "Croatia", group: "UEFA" },
+  { id: "czech_republic", name: "Czech Republic", group: "UEFA" },
+  { id: "denmark", name: "Denmark", group: "UEFA" },
+  { id: "england", name: "England", group: "UEFA" },
+  { id: "france", name: "France", group: "UEFA" },
+  { id: "germany", name: "Germany", group: "UEFA" },
+  { id: "netherlands", name: "Netherlands", group: "UEFA" },
+  { id: "norway", name: "Norway", group: "UEFA" },
+  { id: "portugal", name: "Portugal", group: "UEFA" },
+  { id: "scotland", name: "Scotland", group: "UEFA" },
+  { id: "spain", name: "Spain", group: "UEFA" },
+  { id: "switzerland", name: "Switzerland", group: "UEFA" },
+  { id: "turkey", name: "Turkey", group: "UEFA" },
+  { id: "algeria", name: "Algeria", group: "CAF" },
+  { id: "cape_verde", name: "Cape Verde", group: "CAF" },
+  { id: "cote_d_ivoire", name: "Cote d'Ivoire", group: "CAF" },
+  { id: "egypt", name: "Egypt", group: "CAF" },
+  { id: "ghana", name: "Ghana", group: "CAF" },
+  { id: "morocco", name: "Morocco", group: "CAF" },
+  { id: "senegal", name: "Senegal", group: "CAF" },
+  { id: "south_africa", name: "South Africa", group: "CAF" },
+  { id: "tunisia", name: "Tunisia", group: "CAF" },
+  { id: "australia", name: "Australia", group: "AFC" },
+  { id: "iran", name: "Iran", group: "AFC" },
+  { id: "iraq", name: "Iraq", group: "AFC" },
+  { id: "japan", name: "Japan", group: "AFC" },
+  { id: "jordan", name: "Jordan", group: "AFC" },
+  { id: "qatar", name: "Qatar", group: "AFC" },
+  { id: "saudi_arabia", name: "Saudi Arabia", group: "AFC" },
+  { id: "south_korea", name: "South Korea", group: "AFC" },
+  { id: "uzbekistan", name: "Uzbekistan", group: "AFC" },
+  { id: "curacao", name: "Curacao", group: "CONCACAF" },
+  { id: "haiti", name: "Haiti", group: "CONCACAF" },
+  { id: "panama", name: "Panama", group: "CONCACAF" },
+  { id: "new_zealand", name: "New Zealand", group: "OFC" },
+  { id: "jamaica", name: "Jamaica", group: "Play-off" },
+  { id: "democratic_republic_of_congo", name: "DR Congo", group: "Play-off" },
 ];
 
 export function getTeamById(id: string): Team | undefined {
-  return worldCupTeams.find(t => t.id === id);
+  return worldCupTeams.find((team) => team.id === id);
 }
 
 export function getTeamNameById(id: string): string {

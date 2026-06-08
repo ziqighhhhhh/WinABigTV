@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
-import { QrCode, ArrowRight, AlertTriangle, Trophy } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
+import { ArrowRight, AlertTriangle, Trophy } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function Home() {
@@ -23,7 +24,7 @@ export default function Home() {
     onSuccess: (data) => {
       setAutoChecking(false)
       if (data.valid) {
-        navigate(`/survey?code=${data.code}`)
+        navigate(`/scan-register?code=${data.code}`)
       } else if (data.reason === 'used') {
         toast.error(t('home.error.used'))
       } else {
@@ -61,13 +62,7 @@ export default function Home() {
       <div className="min-h-screen bg-[#eef8f0] flex items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-lg border border-emerald-100 bg-white px-6 py-8 text-center shadow-[0_24px_70px_rgba(15,118,73,0.12)]">
           <Spinner className="size-8 mx-auto mb-4 text-emerald-600" />
-          <p className="text-sm text-slate-600 mb-3">{t('home.autoChecking')}</p>
-          <div className="inline-flex items-center gap-2 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-1.5">
-            <QrCode size={14} className="text-emerald-700" />
-            <span className="text-sm font-mono font-semibold tracking-[0.18em] text-emerald-800">
-              {code || urlCode.toUpperCase()}
-            </span>
-          </div>
+          <p className="text-sm text-slate-600">{t('home.autoChecking')}</p>
         </div>
       </div>
     )
@@ -96,9 +91,7 @@ export default function Home() {
           <div className="mx-auto w-full max-w-[430px] rounded-lg border border-white/80 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                  <QrCode size={23} />
-                </div>
+                <BrandLogo size={44} />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
                     Tiger Head
