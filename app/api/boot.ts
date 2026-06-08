@@ -1,15 +1,18 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
+import { cors } from "hono/cors";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
+import { getDb } from "./queries/connection";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use(compress());
+app.use(cors({ origin: "*", credentials: true }));
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({
@@ -31,6 +34,14 @@ app.onError((error, c) => {
 export default app;
 
 if (env.isProduction) {
+  // 预初始化数据库连接，避免首次请求延迟
+  try {
+    getDb();
+    console.log("[database] pre-initialized");
+  } catch (err) {
+    console.error("[database] pre-init failed", err);
+  }
+
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
   serveStaticFiles(app);
