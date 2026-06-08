@@ -1,52 +1,53 @@
 {
   "home": {
-    "title": "Prédiction du Top 4 de la Coupe du Monde 2026",
-    "subtitle": "Entrez votre code pour participer",
+    "title": "Pronostic du Top 4 de la Coupe du Monde FIFA 2026",
+    "subtitle": "Saisissez votre code pour participer",
     "codeLabel": "Code",
-    "codePlaceholder": "Entrez le code à 6 chiffres",
+    "codePlaceholder": "Saisissez le code à 6 caractères",
     "submit": "Entrer",
     "autoChecking": "Vérification du code...",
     "error": {
-      "empty": "Veuillez entrer un code",
+      "empty": "Veuillez saisir un code",
       "used": "Ce code a déjà été utilisé",
-      "notFound": "Code non trouvé, veuillez vérifier et réessayer",
-      "verifyFailed": "Échec de la vérification, veuillez réessayer"
+      "notFound": "Code introuvable. Veuillez vérifier et réessayer.",
+      "verifyFailed": "Échec de la vérification. Veuillez réessayer."
     },
-    "note": "Chaque code ne peut être utilisé qu'une seule fois. Scannez le QR code pour remplissage automatique.",
-    "adminLink": "Portail Admin"
+    "note": "Chaque code ne peut être utilisé qu'une seule fois. Scannez le QR code pour le remplir automatiquement.",
+    "adminLink": "Portail administrateur"
   },
   "survey": {
-    "title": "Enquête Rapide",
+    "title": "Enquête rapide",
     "subtitle": "Aidez-nous à mieux comprendre votre activité",
     "progress": "Question {{current}}/{{total}}",
+    "back": "Retour",
     "next": "Suivant",
-    "submit": "Soumettre",
+    "submit": "Envoyer",
     "error": {
       "required": "Veuillez sélectionner une réponse"
     }
   },
   "prediction": {
-    "title": "Sélectionnez Vos 4 Équipes",
-    "subtitle": "Choisissez 4 équipes qui atteindront les demi-finales",
+    "title": "Sélectionnez vos 4 meilleures équipes",
+    "subtitle": "Choisissez les 4 équipes qui, selon vous, atteindront les demi-finales",
     "teamLabel": "Équipe {{number}}",
     "teamPlaceholder": "Sélectionnez une équipe",
-    "submit": "Soumettre la Prédiction",
+    "submit": "Envoyer le pronostic",
     "error": {
-      "incomplete": "Veuillez sélectionner 4 équipes",
+      "incomplete": "Veuillez sélectionner les 4 équipes",
       "duplicate": "Veuillez sélectionner 4 équipes différentes",
-      "submitFailed": "Échec de la soumission"
+      "submitFailed": "Échec de l'envoi"
     }
   },
   "success": {
-    "title": "Prédiction Soumise!",
-    "message": "Votre prédiction a été enregistrée.",
+    "title": "Pronostic envoyé !",
+    "message": "Votre pronostic a bien été enregistré.",
     "note": "Les résultats seront annoncés après la Coupe du Monde.",
-    "keepCode": "Veuillez garder votre code en sécurité.",
+    "keepCode": "Veuillez conserver votre code en lieu sûr.",
     "contact": "Les gagnants seront contactés hors ligne."
   },
   "language": {
-    "en": "English",
-    "ar": "العربية",
+    "en": "Anglais",
+    "ar": "Arabe",
     "fr": "Français"
   }
 }

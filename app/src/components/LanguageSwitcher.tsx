@@ -1,19 +1,26 @@
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function LanguageSwitcher() {
   const { i18n } = useTranslation();
 
+  useEffect(() => {
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
+
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
+    localStorage.setItem('preferred_language', lng);
     document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lng;
   };
 
   const languages = [
-    { code: 'en', label: 'EN', flag: '🇬🇧' },
-    { code: 'ar', label: 'AR', flag: '🇸🇦' },
-    { code: 'fr', label: 'FR', flag: '🇫🇷' },
+    { code: 'en', label: 'EN' },
+    { code: 'ar', label: 'AR' },
+    { code: 'fr', label: 'FR' },
   ];
 
   return (

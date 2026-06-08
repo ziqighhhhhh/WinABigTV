@@ -45,7 +45,11 @@ export default function Survey() {
   };
 
   const currentQuestion = surveyQuestions[currentStep];
-  const lang = i18n.language as 'en' | 'ar' | 'fr';
+  const lang = i18n.language.startsWith('ar')
+    ? 'ar'
+    : i18n.language.startsWith('fr')
+      ? 'fr'
+      : 'en';
   const progress = ((currentStep + 1) / surveyQuestions.length) * 100;
 
   return (
@@ -120,7 +124,7 @@ export default function Survey() {
                 className="flex-1 h-11 border-gray-300"
               >
                 <ChevronLeft size={16} className="mr-1" />
-                Back
+                {t('survey.back')}
               </Button>
             )}
             <Button
@@ -129,7 +133,7 @@ export default function Survey() {
             >
               {currentStep < surveyQuestions.length - 1 ? (
                 <>
-                  Next
+                  {t('survey.next')}
                   <ChevronRight size={16} className="ml-1" />
                 </>
               ) : (

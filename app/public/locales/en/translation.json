@@ -3,22 +3,23 @@
     "title": "2026 FIFA World Cup Top 4 Prediction",
     "subtitle": "Enter your code to participate",
     "codeLabel": "Code",
-    "codePlaceholder": "Enter 6-digit code",
+    "codePlaceholder": "Enter 6-character code",
     "submit": "Enter",
     "autoChecking": "Verifying code...",
     "error": {
       "empty": "Please enter a code",
       "used": "This code has already been used",
-      "notFound": "Code not found, please check and try again",
-      "verifyFailed": "Verification failed, please try again"
+      "notFound": "Code not found. Please check and try again.",
+      "verifyFailed": "Verification failed. Please try again."
     },
-    "note": "Each code can only be used once. Scan QR code to auto-fill.",
+    "note": "Each code can only be used once. Scan the QR code to fill it automatically.",
     "adminLink": "Admin Portal"
   },
   "survey": {
     "title": "Quick Survey",
     "subtitle": "Help us understand your business better",
     "progress": "Question {{current}}/{{total}}",
+    "back": "Back",
     "next": "Next",
     "submit": "Submit",
     "error": {
@@ -27,7 +28,7 @@
   },
   "prediction": {
     "title": "Select Your Top 4 Teams",
-    "subtitle": "Choose 4 teams you think will reach the semi-finals",
+    "subtitle": "Choose the 4 teams you think will reach the semi-finals",
     "teamLabel": "Team {{number}}",
     "teamPlaceholder": "Select a team",
     "submit": "Submit Prediction",
@@ -46,7 +47,7 @@
   },
   "language": {
     "en": "English",
-    "ar": "العربية",
-    "fr": "Français"
+    "ar": "Arabic",
+    "fr": "French"
   }
 }
