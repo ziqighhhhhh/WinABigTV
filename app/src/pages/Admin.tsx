@@ -347,7 +347,6 @@ export default function Admin() {
                       <Input
                         type="number"
                         min={1}
-                        max={1000}
                         value={genMaxScans}
                         onChange={(e) => setGenMaxScans(Number(e.target.value))}
                         className="h-10 border-[#e5e7eb] rounded-md focus:ring-2 focus:ring-blue-100 focus:border-[#2563eb]"

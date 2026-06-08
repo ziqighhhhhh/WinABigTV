@@ -24,7 +24,7 @@ export const qrCodeRouter = createRouter({
         count: z.number().min(1).max(1000),
         category: z.string().optional(),
         customerId: z.number().optional(),
-        maxScans: z.number().min(1).max(1000).default(1),
+        maxScans: z.number().min(1).default(1),
       })
     )
     .mutation(async ({ input }) => {
@@ -272,7 +272,7 @@ export const qrCodeRouter = createRouter({
     .input(
       z.object({
         qrCodeId: z.number(),
-        newMaxScans: z.number().min(1).max(1000),
+        newMaxScans: z.number().min(1),
       })
     )
     .mutation(async ({ input }) => {
