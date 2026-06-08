@@ -18,6 +18,10 @@ app.use("/api/trpc/*", async (c) => {
   });
 });
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
+app.onError((error, c) => {
+  console.error(error);
+  return c.json({ error: "Internal Server Error", message: error.message }, 500);
+});
 
 export default app;
 
