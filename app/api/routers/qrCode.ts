@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { createRouter, publicQuery, authenticatedQuery } from "../middleware";
 import { getDb } from "../queries/connection";
-import { qrCodes, categories, nameRecords, customers } from "@db/schema";
-import { eq, desc, like, and, count } from "drizzle-orm";
+import { qrCodes, categories, nameRecords, customers, scanRecords } from "@db/schema";
+import { eq, desc, like, and, count, or } from "drizzle-orm";
 
 function generateUUID() {
   return crypto.randomUUID().replace(/-/g, "");
@@ -24,6 +24,7 @@ export const qrCodeRouter = createRouter({
         count: z.number().min(1).max(1000),
         category: z.string().optional(),
         customerId: z.number().optional(),
+        maxScans: z.number().min(1).max(1000).default(1),
       })
     )
     .mutation(async ({ input }) => {
@@ -50,6 +51,8 @@ export const qrCodeRouter = createRouter({
           url,
           category,
           customerId: input.customerId || null,
+          maxScans: input.maxScans,
+          currentScans: 0,
         });
         generated.push({
           id: Number(result.lastInsertRowid),
@@ -263,6 +266,157 @@ export const qrCodeRouter = createRouter({
         surveyAnswers: record?.surveyAnswers ?? null,
         lastModified: record?.lastModified ?? null,
       }));
+    }),
+
+  updateMaxScans: authenticatedQuery
+    .input(
+      z.object({
+        qrCodeId: z.number(),
+        newMaxScans: z.number().min(1).max(1000),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const qrList = await db
+        .select()
+        .from(qrCodes)
+        .where(eq(qrCodes.id, input.qrCodeId));
+
+      if (qrList.length === 0) throw new Error("QR code not found");
+      if (input.newMaxScans < qrList[0].currentScans) {
+        throw new Error("Max scans cannot be lower than current scans");
+      }
+
+      await db
+        .update(qrCodes)
+        .set({
+          maxScans: input.newMaxScans,
+          status:
+            qrList[0].currentScans >= input.newMaxScans ? "filled" : "unbound",
+        })
+        .where(eq(qrCodes.id, input.qrCodeId));
+
+      return { success: true };
+    }),
+
+  scanRecords: authenticatedQuery
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(50),
+        customerId: z.number().optional(),
+        search: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = getDb();
+      const offset = (input.page - 1) * input.limit;
+      const conditions = [];
+
+      if (input.customerId) {
+        conditions.push(eq(qrCodes.customerId, input.customerId));
+      }
+      if (input.search) {
+        conditions.push(
+          or(
+            like(scanRecords.name, `%${input.search}%`),
+            like(scanRecords.contact, `%${input.search}%`),
+            like(qrCodes.code, `%${input.search.toUpperCase()}%`)
+          )
+        );
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const rows = await db
+        .select({
+          record: scanRecords,
+          qr: qrCodes,
+          customer: customers,
+        })
+        .from(scanRecords)
+        .innerJoin(qrCodes, eq(scanRecords.qrCodeId, qrCodes.id))
+        .leftJoin(customers, eq(qrCodes.customerId, customers.id))
+        .where(whereClause)
+        .orderBy(desc(scanRecords.scannedAt))
+        .limit(input.limit)
+        .offset(offset);
+
+      const totalResult = await db
+        .select({ value: count() })
+        .from(scanRecords)
+        .innerJoin(qrCodes, eq(scanRecords.qrCodeId, qrCodes.id))
+        .where(whereClause);
+
+      return {
+        total: totalResult[0]?.value || 0,
+        items: rows.map(({ record, qr, customer }) => ({
+          id: record.id,
+          code: qr.code,
+          qrCodeId: qr.id,
+          customerId: qr.customerId,
+          customerName: customer?.name ?? null,
+          name: record.name,
+          contact: record.contact,
+          country: record.country,
+          surveyAnswers: record.surveyAnswers,
+          teams: [record.team1, record.team2, record.team3, record.team4],
+          scannedAt: record.scannedAt,
+        })),
+      };
+    }),
+
+  exportScanRecords: authenticatedQuery
+    .input(z.object({ customerId: z.number().optional() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const rows = await db
+        .select({
+          record: scanRecords,
+          qr: qrCodes,
+          customer: customers,
+        })
+        .from(scanRecords)
+        .innerJoin(qrCodes, eq(scanRecords.qrCodeId, qrCodes.id))
+        .leftJoin(customers, eq(qrCodes.customerId, customers.id))
+        .where(
+          input.customerId
+            ? eq(qrCodes.customerId, input.customerId)
+            : undefined
+        )
+        .orderBy(desc(scanRecords.scannedAt));
+
+      const escapeCsv = (value: unknown) =>
+        `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const headers = [
+        "Code",
+        "Customer",
+        "Name",
+        "Contact",
+        "Country",
+        "Team 1",
+        "Team 2",
+        "Team 3",
+        "Team 4",
+        "Scanned At",
+      ];
+      const csvRows = rows.map(({ record, qr, customer }) =>
+        [
+          qr.code,
+          customer?.name ?? "",
+          record.name,
+          record.contact,
+          record.country ?? "",
+          record.team1 ?? "",
+          record.team2 ?? "",
+          record.team3 ?? "",
+          record.team4 ?? "",
+          record.scannedAt ? new Date(record.scannedAt).toISOString() : "",
+        ]
+          .map(escapeCsv)
+          .join(",")
+      );
+
+      return { csv: [headers.join(","), ...csvRows].join("\n") };
     }),
 
   // 中奖筛选

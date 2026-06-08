@@ -2,19 +2,12 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '@/providers/trpc';
-import { worldCupTeams } from '@/lib/worldcup-teams';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import TeamPicker from '@/components/TeamPicker';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { Trophy, ChevronRight, AlertCircle, QrCode } from 'lucide-react';
+import { Trophy, ChevronRight, AlertCircle } from 'lucide-react';
 
 export default function Prediction() {
   const { t } = useTranslation();
@@ -55,11 +48,19 @@ export default function Prediction() {
     const surveyAnswers = JSON.parse(
       localStorage.getItem(`survey_${code}`) || '[]'
     );
+    const scanInfo = JSON.parse(
+      localStorage.getItem(`scan_register_${code}`) || '{}'
+    );
 
     submitMutation.mutate({
       code,
       surveyAnswers,
       teams: teams as [string, string, string, string],
+      responderName: scanInfo.name,
+      responderContact: scanInfo.contact
+        ? `${scanInfo.contactType || 'contact'}:${scanInfo.contact}`
+        : undefined,
+      responderCountry: scanInfo.country,
     });
   };
 
@@ -84,17 +85,6 @@ export default function Prediction() {
             <LanguageSwitcher />
           </div>
 
-          {code && (
-            <div className="mb-5 flex justify-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-md">
-                <QrCode size={14} className="text-green-600" />
-                <span className="text-sm font-mono font-semibold tracking-[0.18em] text-green-700">
-                  {code.toUpperCase()}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* 标题 */}
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
@@ -113,29 +103,12 @@ export default function Prediction() {
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   {t('prediction.teamLabel', { number: index + 1 })}
                 </label>
-                <Select
+                <TeamPicker
                   value={teams[index]}
-                  onValueChange={(value) => handleTeamChange(index, value)}
-                >
-                  <SelectTrigger className="h-12 border-gray-200">
-                    <SelectValue
-                      placeholder={t('prediction.teamPlaceholder')}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {worldCupTeams.map((team) => (
-                      <SelectItem
-                        key={team.id}
-                        value={team.id}
-                        disabled={
-                          teams.includes(team.id) && teams[index] !== team.id
-                        }
-                      >
-                        {team.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handleTeamChange(index, value)}
+                  disabledTeams={teams.filter((_, teamIndex) => teamIndex !== index)}
+                  placeholder={t('prediction.teamPlaceholder')}
+                />
               </div>
             ))}
           </div>

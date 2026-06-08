@@ -5,12 +5,14 @@ import Admin from './pages/Admin'
 import Survey from './pages/Survey'
 import Prediction from './pages/Prediction'
 import Success from './pages/Success'
+import ScanRegister from './pages/ScanRegister'
 import AuthGuard from './components/AuthGuard'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/scan-register" element={<ScanRegister />} />
       <Route path="/survey" element={<Survey />} />
       <Route path="/prediction" element={<Prediction />} />
       <Route path="/success" element={<Success />} />

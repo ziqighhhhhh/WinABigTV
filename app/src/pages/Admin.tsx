@@ -52,16 +52,16 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
-type TabType = "registration" | "customers" | "winners";
+type TabType = "registration" | "customers" | "scanRecords" | "winners";
 
 export default function Admin() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("registration");
 
   // 生成二维码状态
-  const [genCount, setGenCount] = useState(10);
   const [genCategory, setGenCategory] = useState("default");
   const [genCustomerId, setGenCustomerId] = useState<string>("");
+  const [genMaxScans, setGenMaxScans] = useState(1);
 
   // 列表状态
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +81,9 @@ export default function Admin() {
 
   // 中奖筛选状态
   const [winnerTeams, setWinnerTeams] = useState<string[]>(["", "", "", ""]);
+  const [scanSearch, setScanSearch] = useState("");
+  const [scanCustomerId, setScanCustomerId] = useState<string>("");
+  const [scanPage, setScanPage] = useState(1);
 
   const utils = trpc.useUtils();
 
@@ -150,14 +153,38 @@ export default function Admin() {
     { enabled: detailTarget !== null }
   );
 
+  const { data: scanRecordsData, isLoading: scanRecordsLoading } =
+    trpc.qrCode.scanRecords.useQuery({
+      page: scanPage,
+      limit: pageSize,
+      search: scanSearch || undefined,
+      customerId: scanCustomerId ? Number(scanCustomerId) : undefined,
+    });
+
+  const exportScanRecordsMutation = trpc.qrCode.exportScanRecords.useMutation({
+    onSuccess: ({ csv }) => {
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `scan_records_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("CSV exported successfully");
+    },
+    onError: (err) => {
+      toast.error("Export failed: " + err.message);
+    },
+  });
+
   const handleGenerate = () => {
-    if (genCount < 1 || genCount > 1000) {
-      toast.error("生成数量必须在 1-1000 之间");
-      return;
-    }
     generateMutation.mutate({
-      count: genCount,
+      count: 1,
+      category: genCategory,
       customerId: genCustomerId ? Number(genCustomerId) : undefined,
+      maxScans: genMaxScans,
     });
   };
 
@@ -237,10 +264,12 @@ export default function Admin() {
   };
 
   const totalPages = qrList ? Math.ceil(qrList.total / pageSize) : 0;
+  const scanTotalPages = scanRecordsData ? Math.ceil(scanRecordsData.total / pageSize) : 0;
 
   const navItems = [
     { icon: LayoutDashboard, label: "报名管理", tab: "registration" as TabType },
     { icon: Users, label: "客户管理", tab: "customers" as TabType },
+    { icon: Clock, label: "扫码记录", tab: "scanRecords" as TabType },
     { icon: Trophy, label: "中奖筛选", tab: "winners" as TabType },
   ];
 
@@ -284,6 +313,7 @@ export default function Admin() {
             <span className="text-[#111827] font-medium">
               {activeTab === "registration" && "报名管理"}
               {activeTab === "customers" && "客户管理"}
+              {activeTab === "scanRecords" && "扫码记录"}
               {activeTab === "winners" && "中奖筛选"}
             </span>
           </div>
@@ -313,16 +343,16 @@ export default function Admin() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-[#111827]">生成数量</Label>
+                      <Label className="text-sm font-medium text-[#111827]">最大扫码次数</Label>
                       <Input
                         type="number"
                         min={1}
                         max={1000}
-                        value={genCount}
-                        onChange={(e) => setGenCount(Number(e.target.value))}
+                        value={genMaxScans}
+                        onChange={(e) => setGenMaxScans(Number(e.target.value))}
                         className="h-10 border-[#e5e7eb] rounded-md focus:ring-2 focus:ring-blue-100 focus:border-[#2563eb]"
                       />
-                      <p className="text-xs text-[#6b7280]">支持一次生成 1-1000 个二维码</p>
+                      <p className="text-xs text-[#6b7280]">每个二维码可提交的次数</p>
                     </div>
                     <div className="hidden">
                       <Label className="text-sm font-medium text-[#111827]">报名分类</Label>
@@ -462,6 +492,8 @@ export default function Admin() {
                               <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">分配客户</TableHead>
                               <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">分类</TableHead>
                               <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">绑定状态</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">扫码进度</TableHead>
+                              <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">待扫码</TableHead>
                               <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider">创建时间</TableHead>
                               <TableHead className="text-xs font-medium text-[#6b7280] uppercase tracking-wider text-right">操作</TableHead>
                             </TableRow>
@@ -469,7 +501,7 @@ export default function Admin() {
                           <TableBody>
                             {qrList?.items.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={8} className="text-center py-12 text-[#6b7280]">
+                                <TableCell colSpan={10} className="text-center py-12 text-[#6b7280]">
                                   暂无数据
                                 </TableCell>
                               </TableRow>
@@ -518,11 +550,31 @@ export default function Admin() {
                                     {item.category === "default" ? "全部" : item.category === "activity" ? "活动报名" : item.category === "meeting" ? "会议签到" : item.category === "course" ? "课程注册" : item.category}
                                   </TableCell>
                                   <TableCell>
-                                    {item.status === "unbound" ? (
+                                    {item.currentScans === 0 ? (
                                       <Badge variant="outline" className="text-[#6b7280] border-[#d1d5db] bg-[#f9fafb] text-xs font-normal">未绑定</Badge>
+                                    ) : item.currentScans < item.maxScans ? (
+                                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 text-xs font-normal">部分扫码</Badge>
                                     ) : (
                                       <Badge className="bg-[#ecfdf5] text-[#059669] border-[#a7f3d0] hover:bg-[#d1fae5] text-xs font-normal">已填写</Badge>
                                     )}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-[#111827]">
+                                    <div className="min-w-28">
+                                      <div className="font-medium">
+                                        {item.currentScans} / {item.maxScans}
+                                      </div>
+                                      <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                                        <div
+                                          className="h-full rounded-full bg-emerald-500"
+                                          style={{
+                                            width: `${Math.min(100, Math.round((item.currentScans / Math.max(1, item.maxScans)) * 100))}%`,
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-[#111827]">
+                                    {Math.max(0, item.maxScans - item.currentScans)}
                                   </TableCell>
                                   <TableCell className="text-sm text-[#6b7280]">
                                     {item.createdAt ? new Date(item.createdAt).toLocaleString("zh-CN") : "—"}
@@ -590,6 +642,168 @@ export default function Admin() {
                 </CardContent>
               </Card>
             </>
+          )}
+
+          {activeTab === "scanRecords" && (
+            <Card className="border border-[#e5e7eb] shadow-none">
+              <CardHeader className="pb-4 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-semibold text-[#111827]">
+                    扫码记录
+                  </CardTitle>
+                  <CardDescription className="text-sm text-[#6b7280]">
+                    共 {scanRecordsData?.total || 0} 条扫码提交记录
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    exportScanRecordsMutation.mutate({
+                      customerId: scanCustomerId ? Number(scanCustomerId) : undefined,
+                    })
+                  }
+                  disabled={exportScanRecordsMutation.isPending}
+                  className="border-[#e5e7eb]"
+                >
+                  <Download size={16} className="mr-2" />
+                  导出 CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 flex flex-wrap gap-3 border-b border-[#e5e7eb] pb-4">
+                  <Select
+                    value={scanCustomerId || "all"}
+                    onValueChange={(value) => {
+                      setScanCustomerId(value === "all" ? "" : value);
+                      setScanPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-48 text-sm border-[#e5e7eb]">
+                      <SelectValue placeholder="筛选客户" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部客户</SelectItem>
+                      {customersList?.map((customer) => (
+                        <SelectItem key={customer.id} value={String(customer.id)}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex flex-1 justify-end gap-2">
+                    <Input
+                      placeholder="搜索编码、姓名或联系方式"
+                      value={scanSearch}
+                      onChange={(event) => {
+                        setScanSearch(event.target.value);
+                        setScanPage(1);
+                      }}
+                      className="h-9 max-w-sm text-sm border-[#e5e7eb]"
+                    />
+                  </div>
+                </div>
+
+                {scanRecordsLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Spinner className="size-8" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-[#f9fafb] hover:bg-[#f9fafb]">
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">记录ID</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">编码</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">客户</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">姓名</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">联系方式</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">国家/地区</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">预测球队</TableHead>
+                            <TableHead className="text-xs font-medium text-[#6b7280] uppercase">扫码时间</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {scanRecordsData?.items.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={8} className="py-12 text-center text-[#6b7280]">
+                                暂无扫码记录
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            scanRecordsData?.items.map((record) => (
+                              <TableRow key={record.id} className="hover:bg-[#f9fafb]">
+                                <TableCell className="font-mono text-xs text-[#6b7280]">
+                                  #{record.id}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="inline-block rounded bg-[#eff6ff] px-2 py-0.5 font-mono text-xs font-medium tracking-wider text-[#2563eb]">
+                                    {record.code.toUpperCase()}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {record.customerName || "未分配"}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium">
+                                  {record.name}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {record.contact}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {record.country || "—"}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {record.teams
+                                    .filter(Boolean)
+                                    .map((teamId) => worldCupTeams.find((team) => team.id === teamId)?.name || teamId)
+                                    .join(", ") || "—"}
+                                </TableCell>
+                                <TableCell className="text-sm text-[#6b7280]">
+                                  {record.scannedAt
+                                    ? new Date(record.scannedAt).toLocaleString("zh-CN")
+                                    : "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {scanTotalPages > 1 && (
+                      <div className="mt-4 flex items-center justify-end gap-2 border-t border-[#e5e7eb] pt-4">
+                        <span className="text-sm text-[#6b7280]">
+                          共 {scanRecordsData?.total} 条
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setScanPage((current) => Math.max(1, current - 1))}
+                          disabled={scanPage === 1}
+                          className="h-8 w-8 p-0 border-[#e5e7eb]"
+                        >
+                          <ChevronLeft size={14} />
+                        </Button>
+                        <span className="px-2 text-sm font-medium text-[#111827]">
+                          {scanPage}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setScanPage((current) => Math.min(scanTotalPages, current + 1))}
+                          disabled={scanPage === scanTotalPages}
+                          className="h-8 w-8 p-0 border-[#e5e7eb]"
+                        >
+                          <ChevronRight size={14} />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* ===== 客户管理 ===== */}
@@ -888,7 +1102,7 @@ export default function Admin() {
                             <p key={q.id} className="text-xs text-[#6b7280]">
                               {idx + 1}. {q.question.en} → {" "}
                               <span className="text-[#111827] font-medium">
-                                {q.options.find((o) => o.value === answers[idx])?.label.en || answers[idx]}
+                                {q.options?.find((o) => o.value === answers[idx])?.label.en || answers[idx]}
                               </span>
                             </p>
                           ));

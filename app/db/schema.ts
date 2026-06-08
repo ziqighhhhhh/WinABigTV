@@ -30,6 +30,8 @@ export const qrCodes = sqliteTable("qr_codes", {
   status: text("status", { length: 20 }).notNull().default("unbound"),
   category: text("category", { length: 100 }).notNull().default("default"),
   customerId: integer("customer_id", { mode: "number" }),
+  maxScans: integer("max_scans", { mode: "number" }).notNull().default(1),
+  currentScans: integer("current_scans", { mode: "number" }).notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
 
@@ -54,4 +56,18 @@ export const categories = sqliteTable("categories", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
   name: text("name", { length: 100 }).notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const scanRecords = sqliteTable("scan_records", {
+  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+  qrCodeId: integer("qr_code_id", { mode: "number" }).notNull(),
+  name: text("name", { length: 100 }).notNull(),
+  contact: text("contact", { length: 200 }).notNull(),
+  country: text("country", { length: 50 }),
+  surveyAnswers: text("survey_answers"),
+  team1: text("team1", { length: 50 }),
+  team2: text("team2", { length: 50 }),
+  team3: text("team3", { length: 50 }),
+  team4: text("team4", { length: 50 }),
+  scannedAt: integer("scanned_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });

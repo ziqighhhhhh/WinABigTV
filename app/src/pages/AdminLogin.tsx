@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Lock, ArrowLeft, Shield, User } from 'lucide-react'
+import BrandLogo from '@/components/BrandLogo'
+import { Lock, ArrowLeft, User } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function AdminLogin() {
@@ -58,7 +59,7 @@ export default function AdminLogin() {
 
           <div className="text-center mb-6">
             <div className="mx-auto w-14 h-14 rounded-xl bg-[#eff6ff] flex items-center justify-center mb-3">
-              <Shield size={24} className="text-[#2563eb]" />
+              <BrandLogo size={42} />
             </div>
             <h1 className="text-xl font-semibold text-[#111827]">管理后台</h1>
             <p className="text-sm text-[#6b7280] mt-1">请输入用户名和密码</p>

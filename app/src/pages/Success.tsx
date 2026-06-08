@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Trophy, Calendar, Mail } from 'lucide-react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import BrandLogo from '@/components/BrandLogo';
 
 export default function Success() {
   const { t } = useTranslation();
@@ -13,6 +14,10 @@ export default function Success() {
           {/* 语言切换 */}
           <div className="flex justify-end mb-6">
             <LanguageSwitcher />
+          </div>
+
+          <div className="mb-5 flex justify-center">
+            <BrandLogo size={60} />
           </div>
 
           {/* 成功图标 */}

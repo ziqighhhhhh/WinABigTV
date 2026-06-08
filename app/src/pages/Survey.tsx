@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast, Toaster } from 'sonner';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { ChevronRight, ChevronLeft, HelpCircle, QrCode } from 'lucide-react';
+import { ChevronRight, ChevronLeft, HelpCircle } from 'lucide-react';
 
 export default function Survey() {
   const { t, i18n } = useTranslation();
@@ -14,7 +14,7 @@ export default function Survey() {
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code') || '';
 
-  const [answers, setAnswers] = useState<string[]>(new Array(surveyQuestions.length).fill(''));
+  const [answers, setAnswers] = useState<string[]>(() => new Array(surveyQuestions.length).fill(''));
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleAnswer = (value: string) => {
@@ -45,9 +45,9 @@ export default function Survey() {
   };
 
   const currentQuestion = surveyQuestions[currentStep];
-  const lang = i18n.language.startsWith('ar')
+  const lang = i18n.resolvedLanguage?.startsWith('ar') || i18n.language.startsWith('ar')
     ? 'ar'
-    : i18n.language.startsWith('fr')
+    : i18n.resolvedLanguage?.startsWith('fr') || i18n.language.startsWith('fr')
       ? 'fr'
       : 'en';
   const progress = ((currentStep + 1) / surveyQuestions.length) * 100;
@@ -61,17 +61,6 @@ export default function Survey() {
           <div className="flex justify-end mb-4">
             <LanguageSwitcher />
           </div>
-
-          {code && (
-            <div className="mb-5 flex justify-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-md">
-                <QrCode size={14} className="text-green-600" />
-                <span className="text-sm font-mono font-semibold tracking-[0.18em] text-green-700">
-                  {code.toUpperCase()}
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* 进度条 */}
           <div className="mb-6">
@@ -97,21 +86,21 @@ export default function Survey() {
             </div>
 
             <div className="space-y-3">
-              {currentQuestion.options.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleAnswer(option.value)}
-                  className={`w-full p-4 rounded-lg border-2 text-left transition-all duration-200 ${
-                    answers[currentStep] === option.value
-                      ? 'border-green-500 bg-green-50 shadow-sm'
-                      : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-sm font-medium text-gray-800">
-                    {option.label[lang]}
-                  </span>
-                </button>
-              ))}
+              {currentQuestion.options?.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleAnswer(option.value)}
+                    className={`w-full p-4 rounded-lg border-2 text-left transition-all duration-200 ${
+                      answers[currentStep] === option.value
+                        ? 'border-green-500 bg-green-50 shadow-sm'
+                        : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-gray-800">
+                      {option.label[lang]}
+                    </span>
+                  </button>
+                ))}
             </div>
           </div>
 

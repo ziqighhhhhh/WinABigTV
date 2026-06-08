@@ -14,12 +14,14 @@ export interface SurveyQuestion {
     ar: string;
     fr: string;
   };
-  options: SurveyOption[];
+  type: "select" | "text";
+  options?: SurveyOption[];
 }
 
 export const surveyQuestions: SurveyQuestion[] = [
   {
     id: "experience",
+    type: "select",
     question: {
       en: "How long have you been distributing Tiger Head batteries?",
       ar: "منذ متى وأنت توزع بطاريات Tiger Head؟",
@@ -46,6 +48,7 @@ export const surveyQuestions: SurveyQuestion[] = [
   },
   {
     id: "monthly_volume",
+    type: "select",
     question: {
       en: "What is your approximate monthly purchase volume of Tiger Head batteries?",
       ar: "ما حجم مشترياتك الشهرية التقريبي من بطاريات Tiger Head؟",
@@ -72,6 +75,7 @@ export const surveyQuestions: SurveyQuestion[] = [
   },
   {
     id: "sales_channel",
+    type: "select",
     question: {
       en: "What is your primary sales channel for Tiger Head batteries?",
       ar: "ما قناة البيع الرئيسية لديك لبطاريات Tiger Head؟",
@@ -98,6 +102,7 @@ export const surveyQuestions: SurveyQuestion[] = [
   },
   {
     id: "improvement",
+    type: "select",
     question: {
       en: "Which aspect of Tiger Head batteries would you most like to see improved?",
       ar: "ما الجانب الذي ترغب أكثر في تحسينه في بطاريات Tiger Head؟",
