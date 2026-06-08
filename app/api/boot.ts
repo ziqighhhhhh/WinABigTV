@@ -15,6 +15,9 @@ app.use("/api/trpc/*", async (c) => {
     req: c.req.raw,
     router: appRouter,
     createContext,
+    onError({ error, path }) {
+      console.error("[tRPC error]", path, error);
+    },
   });
 });
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

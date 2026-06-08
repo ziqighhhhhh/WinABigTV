@@ -10,7 +10,9 @@ let instance: ReturnType<typeof drizzle<typeof fullSchema>>;
 
 export function getDb() {
   if (!instance) {
-    const sqlite = new Database(env.databaseUrl.replace("sqlite:", ""));
+    const dbPath = env.databaseUrl.replace("sqlite:", "");
+    console.log("[database] opening sqlite database", dbPath);
+    const sqlite = new Database(dbPath);
     instance = drizzle(sqlite, { schema: fullSchema });
   }
   return instance;
