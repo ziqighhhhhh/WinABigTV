@@ -1,28 +1,20 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router'
-import './index.css'
-import './lib/i18n'
-import { TRPCProvider } from "@/providers/trpc"
-import App from './App.tsx'
-import AppErrorBoundary from './components/AppErrorBoundary'
-
 declare global {
   interface Window {
+    __appBundleStarted?: boolean;
     __appMounted?: boolean;
+    __showStartupError?: (message: unknown) => void;
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <BrowserRouter>
-        <TRPCProvider>
-          <App />
-        </TRPCProvider>
-      </BrowserRouter>
-    </AppErrorBoundary>
-  </StrictMode>,
-)
+window.__appBundleStarted = true;
 
-window.__appMounted = true;
+import('./app-entry')
+  .then(({ mountApp }) => {
+    mountApp();
+    window.__appMounted = true;
+  })
+  .catch((error: unknown) => {
+    const message =
+      error instanceof Error ? error.stack || error.message : String(error);
+    window.__showStartupError?.(message);
+  });

@@ -26,18 +26,24 @@
         var reason = event.reason;
         window.__showStartupError(reason && reason.stack ? reason.stack : reason || "Unhandled promise rejection");
       });
+      window.__appBundleStarted = false;
       window.__appMounted = false;
       window.setTimeout(function () {
         if (window.__appMounted) return;
         var script = document.querySelector('script[type="module"][src]');
+        var status = window.__appBundleStarted
+          ? "The module script started, but React did not finish mounting."
+          : "The module script has not started yet, so it is still downloading, blocked, or failed before execution.";
         window.__showStartupError(
-          "The HTML inline script is running, but the React app did not mount within 8 seconds.\\n\\n" +
+          "The HTML inline script is running, but the React app did not mount within 60 seconds.\\n\\n" +
+            status +
+            "\\n\\n" +
             "Module script: " +
             (script ? script.getAttribute("src") : "not found") +
-            "\\n\\nCheck DevTools > Network to confirm the module script finished loading with 200 OK. " +
-            "If it is pending or blocked, disable browser extensions or allow JavaScript for this site."
+            "\\n\\nCheck DevTools > Network. If the module is pending, the server or network is too slow. " +
+            "If it failed, the status code shown there is the next thing to fix."
         );
-      }, 8000);
+      }, 60000);
     </script>
   </head>
   <body>
