@@ -1,0 +1,52 @@
+{
+  "home": {
+    "title": "2026 FIFA World Cup Top 4 Prediction",
+    "subtitle": "Enter your code to participate",
+    "codeLabel": "Code",
+    "codePlaceholder": "Enter 6-digit code",
+    "submit": "Enter",
+    "autoChecking": "Verifying code...",
+    "error": {
+      "empty": "Please enter a code",
+      "used": "This code has already been used",
+      "notFound": "Code not found, please check and try again",
+      "verifyFailed": "Verification failed, please try again"
+    },
+    "note": "Each code can only be used once. Scan QR code to auto-fill.",
+    "adminLink": "Admin Portal"
+  },
+  "survey": {
+    "title": "Quick Survey",
+    "subtitle": "Help us understand your business better",
+    "progress": "Question {{current}}/{{total}}",
+    "next": "Next",
+    "submit": "Submit",
+    "error": {
+      "required": "Please select an answer"
+    }
+  },
+  "prediction": {
+    "title": "Select Your Top 4 Teams",
+    "subtitle": "Choose 4 teams you think will reach the semi-finals",
+    "teamLabel": "Team {{number}}",
+    "teamPlaceholder": "Select a team",
+    "submit": "Submit Prediction",
+    "error": {
+      "incomplete": "Please select all 4 teams",
+      "duplicate": "Please select 4 different teams",
+      "submitFailed": "Submission failed"
+    }
+  },
+  "success": {
+    "title": "Prediction Submitted!",
+    "message": "Your prediction has been recorded.",
+    "note": "Results will be announced after the World Cup.",
+    "keepCode": "Please keep your code safe.",
+    "contact": "Winners will be contacted offline."
+  },
+  "language": {
+    "en": "English",
+    "ar": "العربية",
+    "fr": "Français"
+  }
+}
