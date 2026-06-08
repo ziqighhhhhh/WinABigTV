@@ -5,13 +5,16 @@ import './index.css'
 import './lib/i18n'
 import { TRPCProvider } from "@/providers/trpc"
 import App from './App.tsx'
+import AppErrorBoundary from './components/AppErrorBoundary'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <TRPCProvider>
-        <App />
-      </TRPCProvider>
-    </BrowserRouter>
+    <AppErrorBoundary>
+      <BrowserRouter>
+        <TRPCProvider>
+          <App />
+        </TRPCProvider>
+      </BrowserRouter>
+    </AppErrorBoundary>
   </StrictMode>,
 )

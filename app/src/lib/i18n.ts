@@ -4,15 +4,28 @@ import en from '../../public/locales/en/translation.json';
 import ar from '../../public/locales/ar/translation.json';
 import fr from '../../public/locales/fr/translation.json';
 
-const savedLanguage =
-  typeof window === 'undefined' ? undefined : localStorage.getItem('preferred_language') ?? undefined;
+const supportedLanguages = ['en', 'ar', 'fr'] as const;
+type SupportedLanguage = (typeof supportedLanguages)[number];
+
+function getSavedLanguage(): SupportedLanguage {
+  if (typeof window === 'undefined') return 'en';
+
+  try {
+    const savedLanguage = window.localStorage.getItem('preferred_language');
+    return supportedLanguages.includes(savedLanguage as SupportedLanguage)
+      ? (savedLanguage as SupportedLanguage)
+      : 'en';
+  } catch {
+    return 'en';
+  }
+}
 
 i18n
   .use(initReactI18next)
   .init({
-    lng: savedLanguage || 'en',
+    lng: getSavedLanguage(),
     fallbackLng: 'en',
-    supportedLngs: ['en', 'ar', 'fr'],
+    supportedLngs: supportedLanguages,
     nonExplicitSupportedLngs: true,
     resources: {
       en: { translation: en },
