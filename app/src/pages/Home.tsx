@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { trpc } from '@/providers/trpc'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
-import { QrCode, ArrowRight, AlertTriangle } from 'lucide-react'
+import { QrCode, ArrowRight, AlertTriangle, Trophy } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
 export default function Home() {
@@ -37,7 +36,6 @@ export default function Home() {
     },
   })
 
-  // 如果URL中有code参数，自动验证并跳转
   useEffect(() => {
     if (urlCode) {
       const normalizedCode = urlCode.trim().toUpperCase()
@@ -58,94 +56,108 @@ export default function Home() {
     if (e.key === 'Enter') handleSubmit()
   }
 
-  // URL中有code参数时，显示加载状态
   if (autoChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-sm w-full border border-[#e5e7eb] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-          <CardContent className="pt-8 pb-8 px-6 text-center">
-            <Spinner className="size-8 mx-auto mb-4" />
-            <p className="text-sm text-[#6b7280] mb-2">{t('home.autoChecking')}</p>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-md">
-              <QrCode size={14} className="text-green-600" />
-              <span className="text-sm font-mono font-semibold tracking-[0.18em] text-green-700">
-                {code || urlCode.toUpperCase()}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-[#eef8f0] flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-lg border border-emerald-100 bg-white px-6 py-8 text-center shadow-[0_24px_70px_rgba(15,118,73,0.12)]">
+          <Spinner className="size-8 mx-auto mb-4 text-emerald-600" />
+          <p className="text-sm text-slate-600 mb-3">{t('home.autoChecking')}</p>
+          <div className="inline-flex items-center gap-2 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-1.5">
+            <QrCode size={14} className="text-emerald-700" />
+            <span className="text-sm font-mono font-semibold tracking-[0.18em] text-emerald-800">
+              {code || urlCode.toUpperCase()}
+            </span>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-gray-50 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#dcfce7_0,#f8fafc_34%,#eef8f0_100%)] px-4 py-6 sm:py-10">
       <Toaster position="top-right" />
-      <Card className="max-w-sm w-full border border-[#e5e7eb] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-        <CardContent className="pt-8 pb-8 px-6">
-          {/* 语言切换 */}
-          <div className="flex justify-end mb-4">
-            <LanguageSwitcher />
-          </div>
-
-          <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 rounded-xl bg-green-100 flex items-center justify-center mb-4">
-              <QrCode size={28} className="text-green-600" />
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl items-center">
+        <section className="grid w-full items-center gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="hidden lg:block">
+            <div className="max-w-xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-white/70 px-3 py-1.5 text-sm font-medium text-emerald-800 shadow-sm">
+                <Trophy size={16} />
+                Tiger Head World Cup Campaign
+              </div>
+              <h1 className="text-5xl font-semibold leading-tight text-slate-950">
+                {t('home.title')}
+              </h1>
+              <p className="mt-5 max-w-md text-base leading-7 text-slate-600">
+                {t('home.note')}
+              </p>
             </div>
-            <h1 className="text-2xl font-semibold text-[#111827] mb-2">
-              {t('home.title')}
-            </h1>
-            <p className="text-sm text-[#6b7280]">
-              {t('home.subtitle')}
-            </p>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#111827]">{t('home.codeLabel')}</Label>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                onKeyDown={handleKeyDown}
-                placeholder={t('home.codePlaceholder')}
-                maxLength={6}
-                className="h-12 text-center text-lg tracking-[0.3em] font-mono border-[#e5e7eb] rounded-md uppercase focus:ring-2 focus:ring-green-100 focus:border-green-500"
-              />
+          <div className="mx-auto w-full max-w-[430px] rounded-lg border border-white/80 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                  <QrCode size={23} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                    Tiger Head
+                  </p>
+                  <p className="text-sm text-slate-500">World Cup 2026</p>
+                </div>
+              </div>
+              <LanguageSwitcher />
             </div>
 
-            <Button
-              onClick={handleSubmit}
-              disabled={verifyMutation.isPending}
-              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
-            >
-              {verifyMutation.isPending ? (
-                t('home.autoChecking')
-              ) : (
-                <>
-                  {t('home.submit')}
-                  <ArrowRight size={14} className="ml-2" />
-                </>
-              )}
-            </Button>
-          </div>
+            <div className="mb-7 lg:hidden">
+              <h1 className="text-3xl font-semibold leading-tight text-slate-950">
+                {t('home.title')}
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{t('home.subtitle')}</p>
+            </div>
 
-          <div className="mt-6 flex items-start gap-2 px-3 py-2.5 bg-[#f9fafb] rounded-md">
-            <AlertTriangle size={14} className="text-[#9ca3af] mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-[#9ca3af] leading-relaxed">
-              {t('home.note')}
-            </p>
-          </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-900">{t('home.codeLabel')}</Label>
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('home.codePlaceholder')}
+                  maxLength={6}
+                  className="h-12 rounded-md border-slate-200 text-center font-mono text-lg uppercase tracking-[0.28em] shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                />
+              </div>
 
-          <div className="mt-4 pt-4 border-t border-[#e5e7eb] text-center">
-            <a
-              href="/admin"
-              className="text-xs text-[#9ca3af] hover:text-[#2563eb] transition-colors"
-            >
-              {t('home.adminLink')}
-            </a>
+              <Button
+                onClick={handleSubmit}
+                disabled={verifyMutation.isPending}
+                className="h-12 w-full rounded-md bg-emerald-600 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+              >
+                {verifyMutation.isPending ? (
+                  t('home.autoChecking')
+                ) : (
+                  <>
+                    {t('home.submit')}
+                    <ArrowRight size={15} className="ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="mt-5 flex items-start gap-2 rounded-md bg-slate-50 px-3 py-3">
+              <AlertTriangle size={15} className="mt-0.5 shrink-0 text-slate-400" />
+              <p className="text-xs leading-5 text-slate-500">{t('home.note')}</p>
+            </div>
+
+            <div className="mt-5 border-t border-slate-100 pt-4 text-center">
+              <a href="/admin" className="text-xs font-medium text-slate-400 transition-colors hover:text-emerald-700">
+                {t('home.adminLink')}
+              </a>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </section>
+      </div>
+    </main>
   )
 }
